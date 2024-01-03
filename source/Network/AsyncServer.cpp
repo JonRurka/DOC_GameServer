@@ -31,7 +31,9 @@ void AsyncServer::Update(float dt)
 {
 
     for (const auto& user : m_socket_users) {
-        user.second->Update(dt);
+        if (user.second != nullptr) {
+            user.second->Update(dt);
+        }
     }
     
 
@@ -200,19 +202,22 @@ void AsyncServer::Test_Server(void* obj)
 
 void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer)
 {
-    if (buffer.size() > 2)
+    if (buffer.size() >= 3)
     {
+        uint16_t udp_id = *((uint16_t*)buffer.data());
+        buffer = BufferUtils::RemoveFront(Remove_UDP_ID, buffer);
+
         uint8_t command = buffer[0];
         buffer = BufferUtils::RemoveFront(Remove_CMD, buffer);
         
-        uint16_t udp_id = *((uint16_t*)&buffer);
-
         if (Has_UDP_ID(udp_id)) {
 
-            buffer = BufferUtils::RemoveFront(Remove_UDP_ID, buffer);
             SocketUser* socket_user = m_udp_id_map[udp_id];
             Data data(Protocal_Udp, command, buffer);
             Process(socket_user, data);
+        }
+        else {
+            Logger::Log("UDP ID Not Found: " + std::to_string(udp_id));
         }
     }
     else {
@@ -269,7 +274,7 @@ void AsyncServer::System_Cmd(AsyncServer::SocketUser* socket_user, Data data)
 {
     uint8_t sub_command = data.Buffer[0];
     //UE_LOG(GameClient_Log, Display, TEXT("Received sub command %d"), sub_command);
-    Logger::Log("Sub Command: " + std::to_string(sub_command));
+    //Logger::Log("Sub Command: " + std::to_string(sub_command));
 
     data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
 
@@ -279,8 +284,8 @@ void AsyncServer::System_Cmd(AsyncServer::SocketUser* socket_user, Data data)
         break;
     case 0x03:
         socket_user->ResetPingCounter();
-        socket_user->Send(OpCodes::Client::System_Reserved, std::vector<uint8_t>({ 0x03, 0x01 }));
-        Logger::Log("Received ping");
+        socket_user->Send(OpCodes::Client::System_Reserved, std::vector<uint8_t>({ 0x03, 0x01 }), Protocal_Tcp);
+        //Logger::Log("Received ping");
         break;
     }
 }

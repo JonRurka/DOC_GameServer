@@ -1,9 +1,16 @@
 #include "MatchManager.h"
 #include "Server_Main.h"
+#include "Match.h"
+#include "HashHelper.h"
+#include "Network/BufferUtils.h"
+#include "Network/AsyncServer.h"
+#include "Network/OpCodes.h"
 
 MatchManager::MatchManager()
 {
 	m_last_new_match_request = 0;
+
+	AsyncServer::GetInstance()->AddCommand(OpCodes::Server::Match_Command, MatchManager::RoutMatchNetCommand_cb, this, true);
 }
 
 MatchManager::~MatchManager()
@@ -20,10 +27,14 @@ void MatchManager::Update(float dt)
 
 }
 
-void MatchManager::RoutMatchNetCommand(AsyncServer::SocketUser user, Data data)
+void MatchManager::RoutMatchNetCommand(AsyncServer::SocketUser* user, Data data)
 {
-	// Get match ID.
-	// Route command to match.
+	uint16_t match_short_id = *((uint16_t*)data.Buffer.data());
+	data.Buffer = BufferUtils::RemoveFront(2, data.Buffer);
+
+	if (Has_Match_Short_ID(match_short_id)) {
+		m_matches[match_short_id]->SubmitMatchCommand(user, data);
+	}
 }
 
 void MatchManager::CreateMatches()
@@ -37,7 +48,16 @@ void MatchManager::CreateMatches()
 
 void MatchManager::CreateMatch(MatchCreationRequest request)
 {
+	if (Has_Match_ID(request.Match_ID)) {
+		return;
+	}
 
+	Match* match = new Match(request.Match_ID);
+
+	uint16_t match_short_id = Get_New_Match_Short_ID();
+
+	m_matches[match_short_id] = match;
+	m_matches_IDs[request.Match_ID] = match;
 }
 
 std::vector<MatchManager::MatchCreationRequest> MatchManager::GetNewMatches()
@@ -48,7 +68,7 @@ std::vector<MatchManager::MatchCreationRequest> MatchManager::GetNewMatches()
 
 	MatchCreationRequest match;
 
-	match.Match_ID = "placeholder";
+	match.Match_ID = "00000000";
 	//match.Players.push_back("placeholder_UID");
 
 	newRequests.push_back(match);
@@ -56,4 +76,13 @@ std::vector<MatchManager::MatchCreationRequest> MatchManager::GetNewMatches()
 	m_last_new_match_request = Server_Main::GetEpoch();
 
 	return newRequests;
+}
+
+uint16_t MatchManager::Get_New_Match_Short_ID()
+{
+	uint16_t newNum = HashHelper::RandomNumber(0, UINT16_MAX);
+	if (Has_Match_Short_ID(newNum)) {
+		newNum = Get_New_Match_Short_ID();
+	}
+	return newNum;
 }

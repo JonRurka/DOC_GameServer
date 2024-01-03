@@ -7,13 +7,18 @@
 
 AsyncServer::SocketUser::SocketUser(AsyncServer* server, tcp_connection::pointer client)
 {
+	int udp_client_port = UDP_PORT;
+	if (SERVER_LOCAL) {
+		udp_client_port += 1;
+	}
+
 	_server = server;
 	SessionToken = HashHelper::RandomKey(8);
 	tcp_connection_client = client;
 	TcpEndPoint = client->socket().remote_endpoint();
-	UdpEndPoint = udp::endpoint(TcpEndPoint.address(), UDP_PORT);
+	UdpEndPoint = udp::endpoint(TcpEndPoint.address(), udp_client_port);
 	timeOutWatch.restart();
-	UdpID = -1;
+	UdpID = 0;
 	Permission = 0;
 	Connected = true;
 	IsAuthenticated = false;
@@ -57,6 +62,8 @@ void AsyncServer::SocketUser::HandleStartConnect_Finished(bool successfull)
 		//ServerBase.BaseInstance.UserConnected(user);
 
 		//user.Send(0xff, BufferUtils.Add(new byte[]{ 0x01, result }, udpidBuff));
+
+		Logger::Log("UDP ID: " + std::to_string(udp_id));
 
 		Send(OpCodes::Client::System_Reserved, BufferUtils::Add({ {0x01, result}, {udp_buf[0], udp_buf[1]}}), Protocal_Tcp);
 
@@ -150,6 +157,8 @@ void AsyncServer::SocketUser::DoSendUdp(std::vector<uint8_t> data)
 {
 	if (!Connected)
 		return;
+
+	data = BufferUtils::Add_UDP_ID(UdpID, data);
 
 	_server->m_udp_server->Send(UdpEndPoint, data);
 }

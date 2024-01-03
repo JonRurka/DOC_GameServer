@@ -6,7 +6,8 @@ class OpCodes {
 public:
 	enum class Server : uint8_t {
 		System_Reserved = 0xff,
-		Submit_Identity = 0x01
+		Submit_Identity = 0x01,
+		Match_Command = 0x02
 	};
 
 	enum class Client : uint8_t {

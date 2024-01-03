@@ -1,4 +1,5 @@
 #include "Match.h"
+#include "Network/AsyncServer.h"
 
 Match::Match(std::string id)
 {
@@ -49,29 +50,34 @@ void Match::GameLoop()
 
 void Match::AsynUpdate()
 {
-
+	ProcessNetCommands();
 }
 
 void Match::ProcessNetCommands()
 {
 	while (!m_command_queue.empty()) {
-		Data data = m_command_queue.front();
+		NetCommand data = m_command_queue.front();
 		m_command_queue.pop();
 
-		ExecuteNetCommand(data);
+		ExecuteNetCommand(data.user, data.data);
 	}
 }
 
-void Match::ExecuteNetCommand(Data data)
+void Match::ExecuteNetCommand(AsyncServer::SocketUser* user, Data data)
 {
-	switch (data.command) {
+	uint8_t sub_command = data.Buffer[0];
+
+	switch (sub_command) {
 	case 0x00:
 
 		break;
 	}
 }
 
-void Match::SubmitMatchCommand(Data data)
+void Match::SubmitMatchCommand(AsyncServer::SocketUser* user, Data data)
 {
-	m_command_queue.push(data);
+	NetCommand command;
+	command.user = user;
+	command.data = data;
+	m_command_queue.push(command);
 }

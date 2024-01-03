@@ -24,6 +24,8 @@ class Server_Main;
 #define TCP_PORT 1000
 #define UDP_PORT 1001
 
+#define SERVER_LOCAL true
+
 class AsyncServer {
 public:
 	class SocketUser {

@@ -25,6 +25,20 @@ public:
 		return Add(arrays);
 	}
 
+	static std::vector<uint8_t> Add_UDP_ID(uint16_t udp_id, std::vector<uint8_t> data) {
+		//uint16_t len = data.size();
+		uint8_t* udp_id_buff = (uint8_t*)&udp_id;
+		uint8_t lo = udp_id_buff[0];// len & 0xFF;
+		uint8_t hi = udp_id_buff[1];// len >> 8;
+		std::vector<uint8_t> id_v;// {lo, hi};
+		id_v.push_back(lo);
+		id_v.push_back(hi);
+		std::vector<std::vector<uint8_t>> arrays;
+		arrays.push_back(id_v);
+		arrays.push_back(data);
+		return Add(arrays);
+	}
+
 	static std::vector<uint8_t> RemoveFront(Remove numToRemove, std::vector<uint8_t> origin)
 	{
 		std::vector<uint8_t> res;

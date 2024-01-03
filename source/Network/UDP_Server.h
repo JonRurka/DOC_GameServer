@@ -46,6 +46,7 @@ private:
 	std::map<uint64_t, uint8_t*> send_buffers;
 	int numSends = 0;
 	uint8_t recv_buffer_[MAX_UDP_SIZE];
+	uint8_t length_buff[2];
 	std::thread m_thread;
 	boost::asio::io_service& io_service_;
 };

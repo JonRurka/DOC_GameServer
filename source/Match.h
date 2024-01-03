@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 #include "Network/Data.h"
-
+#include "Network/AsyncServer.h"
 
 class Match {
 public:
@@ -13,15 +13,21 @@ public:
 
 	void Stop();
 
-	void SubmitMatchCommand(Data data);
+	void SubmitMatchCommand(AsyncServer::SocketUser* user, Data data);
 
 private:
+
+	struct NetCommand {
+	public:
+		AsyncServer::SocketUser* user;
+		Data data;
+	};
 
 	std::string m_ID;
 
 	std::thread m_thread;
 
-	std::queue<Data> m_command_queue;
+	std::queue<NetCommand> m_command_queue;
 
 	bool m_running;
 
@@ -37,5 +43,5 @@ private:
 
 	void ProcessNetCommands();
 
-	void ExecuteNetCommand(Data data);
+	void ExecuteNetCommand(AsyncServer::SocketUser* user, Data data);
 };
