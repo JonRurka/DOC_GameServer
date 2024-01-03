@@ -4,6 +4,7 @@
 #include "../Logger.h"
 #include "../HashHelper.h"
 #include "../Server_Main.h"
+#include "../IUser.h"
 
 AsyncServer::SocketUser::SocketUser(AsyncServer* server, tcp_connection::pointer client)
 {
@@ -92,6 +93,7 @@ void AsyncServer::SocketUser::SetUser(IUser* user)
 	User = user;
 	if (User != NULL)
 	{
+		User->Set_Socket_User(this);
 		//Logger::Log("Set user: " + ((User)User).Name);
 		//User.SetSocket(this);
 	}
@@ -181,6 +183,8 @@ void AsyncServer::SocketUser::Close(bool sendClose, std::string reason)
 		}
 
 		tcp_connection_client->close();
+
+		_server->RemovePlayer(this);
 
 		//if (CloseMessage)
 		//	Logger::Log("{0}: closed {1}", SessionToken, reason != "" ? "- " + reason : "");

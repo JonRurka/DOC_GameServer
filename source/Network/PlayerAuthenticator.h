@@ -2,7 +2,8 @@
 
 #include "../stdafx.h"
 
-class AsyncServer;
+class Server_Main;
+class Player;
 
 class PlayerAuthenticator {
 public:
@@ -10,13 +11,13 @@ public:
 		m_initialized = false;
 		m_server = nullptr;
 	}
-	PlayerAuthenticator(AsyncServer* server_inst);
+	PlayerAuthenticator(Server_Main* server_inst);
 
-	void Authenticate(void* socket_user);
+	void Authenticate(Player* player);
 
 private:
 	bool m_initialized;
-	AsyncServer* m_server;
+	Server_Main* m_server;
 
-	void HasAuthenticatedPlayer(void* socket_user, bool authorized);
+	void HasAuthenticatedPlayer(Player* player, bool authorized);
 };

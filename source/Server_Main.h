@@ -1,10 +1,14 @@
 #pragma once
 
 #include "stdafx.h"
+#include "Network/AsyncServer.h"
 
 class CommandExecuter;
 class Logger;
 class AsyncServer;
+class MatchManager;
+class PlayerAuthenticator;
+class Player;
 
 class Server_Main {
 private:
@@ -23,6 +27,12 @@ private:
 	double lastTime;
 
 	AsyncServer* m_net_server;
+
+	MatchManager* m_match_manager;
+
+	PlayerAuthenticator* m_authenticator;
+
+	std::map<uint32_t, Player*> m_players;
 
 public:
 
@@ -78,6 +88,12 @@ public:
 
 	void UserDisconnected(void* socket_user);
 
+	void PlayerAuthenticated(Player* player, bool authorized);
+
+	bool Has_Player(uint32_t p_id) {
+		return m_players.find(p_id) != m_players.end();
+	}
+
 	Server_Main(char* args);
 
 
@@ -95,4 +111,15 @@ public:
 
 	void Dispose();
 
+	static void UserIdentify_cb(void* obj, AsyncServer::SocketUser* user, Data data) {
+		Server_Main* srv = (Server_Main*)obj;
+		srv->UserIdentify(user, data);
+	}
+	void UserIdentify(AsyncServer::SocketUser* user, Data data);
+
+	static void JoinMatch_cb(void* obj, AsyncServer::SocketUser* user, Data data) {
+		Server_Main* srv = (Server_Main*)obj;
+		srv->JoinMatch(user, data);
+	}
+	void JoinMatch(AsyncServer::SocketUser* user, Data data);
 };

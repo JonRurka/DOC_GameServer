@@ -1,9 +1,10 @@
 #include "Match.h"
 #include "Network/AsyncServer.h"
 
-Match::Match(std::string id)
+Match::Match(std::string id, uint16_t short_id)
 {
 	m_ID = id;
+	m_short_ID = short_id;
 }
 
 Match::~Match()
@@ -21,6 +22,15 @@ void Match::Stop()
 		m_running = false;
 		m_thread.join();
 	}
+}
+
+bool Match::JoinPlayer(Player* player)
+{
+	// In a isolated match, join any player,
+	// In a network match, only join assigned players.
+
+
+	return true;
 }
 
 void Match::GetMatchInfo()

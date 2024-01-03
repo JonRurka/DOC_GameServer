@@ -6,12 +6,22 @@
 
 class Match {
 public:
-	Match(std::string id);
+	Match(std::string id, uint16_t short_id);
 	~Match();
+
+	std::string ID() {
+		return m_ID;
+	}
+
+	uint16_t ShortID() {
+		return m_short_ID;
+	}
 
 	void Init();
 
 	void Stop();
+
+	bool JoinPlayer(Player* player);
 
 	void SubmitMatchCommand(AsyncServer::SocketUser* user, Data data);
 
@@ -24,6 +34,7 @@ private:
 	};
 
 	std::string m_ID;
+	uint16_t m_short_ID;
 
 	std::thread m_thread;
 

@@ -27,4 +27,12 @@ public:
 		std::uniform_int_distribution<int> distr(min, max);
 		return distr(generator);
 	}
+
+	static std::vector<uint8_t> StringToBytes(std::string input) {
+		return std::vector<uint8_t>(input.begin(), input.end());
+	}
+
+	static std::string BytesToString(std::vector<uint8_t> input) {
+		return std::string(input.begin(), input.end());
+	}
 };

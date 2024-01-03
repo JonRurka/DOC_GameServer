@@ -1,22 +1,24 @@
 #include "PlayerAuthenticator.h"
 #include "AsyncServer.h"
+#include "../Server_Main.h"
+#include "../Player.h"
 
-PlayerAuthenticator::PlayerAuthenticator(AsyncServer* server_inst)
+PlayerAuthenticator::PlayerAuthenticator(Server_Main* server_inst)
 {
 	m_server = server_inst;
 	m_initialized = true;
 }
 
-void PlayerAuthenticator::Authenticate(void* socket_user)
+void PlayerAuthenticator::Authenticate(Player* player)
 {
-	AsyncServer::SocketUser* user = (AsyncServer::SocketUser*)socket_user;
+	//AsyncServer::SocketUser* user = (AsyncServer::SocketUser*)socket_user;
 
 	// TODO: Logic to authorize player.
 
-	HasAuthenticatedPlayer(user, true);
+	HasAuthenticatedPlayer(player, true);
 }
 
-void PlayerAuthenticator::HasAuthenticatedPlayer(void* socket_user, bool authorized)
+void PlayerAuthenticator::HasAuthenticatedPlayer(Player* player, bool authorized)
 {
-	m_server->PlayerAuthenticated((AsyncServer::SocketUser*)socket_user, authorized);
+	m_server->PlayerAuthenticated(player, authorized);
 }

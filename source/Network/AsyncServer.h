@@ -36,7 +36,6 @@ public:
 		std::string SessionToken;
 		int Permission;
 		bool Connected;
-		bool IsAuthenticated;
 		bool Receiving;
 		bool UdpEnabled;
 		uint16_t UdpID;
@@ -51,6 +50,7 @@ public:
 	private:
 		AsyncServer* _server;
 		boost::timer timeOutWatch;
+		bool IsAuthenticated;
 
 	public:
 
@@ -65,6 +65,18 @@ public:
 		void EnableUdp(int port);
 
 		void SetUser(IUser* user);
+
+		bool Get_Authenticated() {
+			return IsAuthenticated;
+		}
+
+		void Set_Authenticated(bool val) {
+			IsAuthenticated = val;
+		}
+
+		IUser* GetUser() {
+			return User;
+		}
 
 		void Set_UDP_ID(uint16_t id) {
 			UdpID = id;

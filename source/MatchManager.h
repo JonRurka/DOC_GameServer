@@ -22,7 +22,23 @@ public:
 
 	void Update(float dt);
 
-	static void RoutMatchNetCommand_cb(AsyncServer::SocketUser* user, Data data, void* obj) {
+	bool AddMatchPlayer(Player* player, std::string match_id);
+
+	Match* GetMatchFromID(std::string id) {
+		if (Has_Match_ID(id)) {
+			return m_matches_IDs[id];
+		}
+		return nullptr;
+	}
+
+	Match* GetMatchFromShortID(uint16_t short_id) {
+		if (Has_Match_Short_ID(short_id)) {
+			return m_matches[short_id];
+		}
+		return nullptr;
+	}
+
+	static void RoutMatchNetCommand_cb(void* obj, AsyncServer::SocketUser* user, Data data) {
 		MatchManager* mnger = (MatchManager*)obj;
 		mnger->RoutMatchNetCommand(user, data);
 	}
@@ -30,6 +46,8 @@ public:
 	void RoutMatchNetCommand(AsyncServer::SocketUser* user, Data data);
 
 private:
+
+	static MatchManager* m_instance;
 
 	uint64_t m_last_new_match_request;
 
@@ -52,4 +70,8 @@ private:
 
 	std::vector<MatchCreationRequest> GetNewMatches();
 	
+	static MatchManager* GetInstance() {
+		return m_instance;
+	}
+
 };

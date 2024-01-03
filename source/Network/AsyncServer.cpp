@@ -11,7 +11,7 @@ AsyncServer::AsyncServer(Server_Main* server)
     m_instance = this;
 
 	m_server = server;
-	m_authenticator = PlayerAuthenticator(this);
+	//m_authenticator = PlayerAuthenticator(this);
 
     m_udp_server = new udp_server(this, m_io_service_udp, UDP_PORT);
 	m_tcp_server = new tcp_server(this, m_io_service_tcp, TCP_PORT);
