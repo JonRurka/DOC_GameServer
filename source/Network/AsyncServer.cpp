@@ -31,6 +31,7 @@ void AsyncServer::Update(float dt)
 {
 
     for (const auto& user : m_socket_users) {
+        // TODO: Fix crash
         if (user.second != nullptr) {
             user.second->Update(dt);
         }

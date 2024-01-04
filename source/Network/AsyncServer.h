@@ -33,6 +33,7 @@ public:
 
 	public:
 		IUser* User;
+		bool has_user;
 		std::string SessionToken;
 		int Permission;
 		bool Connected;
@@ -76,6 +77,10 @@ public:
 
 		IUser* GetUser() {
 			return User;
+		}
+
+		bool Has_User() {
+			return has_user;
 		}
 
 		void Set_UDP_ID(uint16_t id) {

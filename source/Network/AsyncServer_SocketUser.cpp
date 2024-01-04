@@ -24,6 +24,8 @@ AsyncServer::SocketUser::SocketUser(AsyncServer* server, tcp_connection::pointer
 	Connected = true;
 	IsAuthenticated = false;
 	UdpEnabled = false;
+	User = nullptr;
+	has_user = false;
 
 	ResetPingCounter();
 
@@ -90,16 +92,17 @@ void AsyncServer::SocketUser::EnableUdp(int port)
 
 void AsyncServer::SocketUser::SetUser(IUser* user)
 {
-	User = user;
-	if (User != NULL)
+	if (user != nullptr)
 	{
+		User = user;
 		User->Set_Socket_User(this);
-		//Logger::Log("Set user: " + ((User)User).Name);
+		has_user = true;
+		Logger::Log("Set user");
 		//User.SetSocket(this);
 	}
 	else
 	{
-		//Logger::Log("IUser null");
+		Logger::Log("IUser null");
 	}
 }
 

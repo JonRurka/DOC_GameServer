@@ -1,6 +1,6 @@
 #include "Player.h"
 
-#include <boost/json/src.hpp>
+#include <boost/json.hpp>
 
 using namespace boost;
 
@@ -30,7 +30,8 @@ bool Player::SetIdentity(std::string json_identity)
 	json::object ident_obj = json_val.as_object();
 
 	m_userName = std::string(ident_obj.at("UserName").as_string());
-	m_distro_userID = std::string(ident_obj.at("User_ID").as_string());
+	m_distro_userID = std::string(ident_obj.at("User_Distro_ID").as_string());
+	m_UserID = ident_obj.at("UserID").as_int64();
 
 	//Logger::Log("Is Number: " + std::to_string((int)ident_obj.at("Distributor").is_number()) + ", " + std::to_string((int)ident_obj.at("Distributor").is_int64()));
 	m_distributor = ident_obj.at("Distributor").as_int64();

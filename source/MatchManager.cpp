@@ -5,6 +5,7 @@
 #include "Network/BufferUtils.h"
 #include "Network/AsyncServer.h"
 #include "Network/OpCodes.h"
+#include "Player.h"
 
 MatchManager* MatchManager::m_instance = nullptr;
 
@@ -37,6 +38,7 @@ bool MatchManager::AddMatchPlayer(Player* player, std::string match_id)
 		return m_matches_IDs[match_id]->JoinPlayer(player);
 	}
 	else {
+		Logger::Log("Match not foud!");
 		return false;
 	}
 }
@@ -48,12 +50,18 @@ void MatchManager::RoutMatchNetCommand(AsyncServer::SocketUser* user, Data data)
 		return;
 	}
 
-	uint16_t match_short_id = *((uint16_t*)data.Buffer.data());
-	data.Buffer = BufferUtils::RemoveFront(2, data.Buffer);
+	//uint16_t match_short_id = *((uint16_t*)data.Buffer.data());
+	//data.Buffer = BufferUtils::RemoveFront(2, data.Buffer);
 
-	if (Has_Match_Short_ID(match_short_id)) {
-		m_matches[match_short_id]->SubmitMatchCommand(user, data);
+	Player* player = (Player*)user->GetUser();
+
+	if (player != nullptr && player->Get_Active_Match() != nullptr) {
+		player->Get_Active_Match()->SubmitMatchCommand(user, data);
 	}
+
+	/*if (Has_Match_Short_ID(match_short_id)) {
+		m_matches[match_short_id]->SubmitMatchCommand(user, data);
+	}*/
 }
 
 void MatchManager::CreateMatches()
@@ -74,6 +82,7 @@ void MatchManager::CreateMatch(MatchCreationRequest request)
 	uint16_t match_short_id = Get_New_Match_Short_ID();
 
 	Match* match = new Match(request.Match_ID, match_short_id);
+	match->Init();
 
 	m_matches[match_short_id] = match;
 	m_matches_IDs[request.Match_ID] = match;

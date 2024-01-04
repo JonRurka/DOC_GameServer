@@ -9,16 +9,25 @@
 #include "Match.h"
 #include "Player.h"
 
-#include <boost/json.hpp>
+#include <boost/json/src.hpp>
 
 using namespace boost;
-
+ 
 Server_Main* Server_Main::m_instance = nullptr;
 
 void Server_Main::UserConnected(void* socket_usr)
 {
 	AsyncServer::SocketUser* socket_user = (AsyncServer::SocketUser*)socket_usr;
 
+	Player* player = (Player*)socket_user->GetUser();
+
+	if (socket_user->Has_User() && socket_user->GetUser() != nullptr) {
+		Player* player = (Player*)socket_user->GetUser();
+		Match* player_match = player->Get_Active_Match();
+		if (player_match != nullptr) {
+			player_match->RemovePlayer(player);
+		}
+	}
 
 	Logger::Log("User '" + socket_user->SessionToken + "' has connected.");
 
@@ -178,7 +187,7 @@ void Server_Main::SetCurrentCommand(std::string command)
 void Server_Main::UserIdentify(AsyncServer::SocketUser* user, Data data)
 {
 	Player* player = new Player();
-	user->SetUser(player);
+	user->SetUser((IUser*)player);
 
 	bool is_identified = player->SetIdentity(HashHelper::BytesToString(data.Buffer));
 
@@ -207,6 +216,8 @@ void Server_Main::JoinMatch(AsyncServer::SocketUser* user, Data data)
 
 	std::string json_string = HashHelper::BytesToString(data.Buffer);
 
+	Logger::Log(json_string);
+
 	json::parse_options opt;
 	opt.allow_trailing_commas = true;
 
@@ -223,7 +234,7 @@ void Server_Main::JoinMatch(AsyncServer::SocketUser* user, Data data)
 	json::object ident_obj = json_val.as_object();
 	std::string match_id = std::string(ident_obj.at("Match_ID").as_string());
 
-	Logger::Log("Join " + player->Get_UserName() + " To match " + match_id);
+	
 
 	bool join_res = m_match_manager->AddMatchPlayer(player, match_id);
 
@@ -235,6 +246,13 @@ void Server_Main::JoinMatch(AsyncServer::SocketUser* user, Data data)
 		match_short_id = match->ShortID();
 		res = 0x01;
 	}
+	else {
+		Logger::Log("Match join failed: " + std::to_string(join_res));
+	}
+
+
+
+	Logger::Log("Join " + player->Get_UserName() + " To match " + match_id + ", " + std::to_string(match_short_id));
 
 	user->Send(OpCodes::Client::Join_Match_Result, std::vector<uint8_t>({res, ((uint8_t*)&match_short_id)[0], ((uint8_t*)&match_short_id)[1]}));
 }
