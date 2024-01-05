@@ -66,4 +66,21 @@ public:
 		}
 		return res;
 	}
+
+	static std::vector<uint8_t> Add(std::vector<uint8_t> buffer_1, std::vector<uint8_t> buffer_2) {
+		
+		std::vector<std::vector<uint8_t>> buffers;
+		buffers.push_back(buffer_1);
+		buffers.push_back(buffer_2);
+		return Add(buffers);
+	}
+
+	static std::vector<uint8_t> Add(std::vector<uint8_t>* buffers_arr, int num) {
+
+		std::vector<std::vector<uint8_t>> buffers;
+		for (int i = 0; i < num; i++) {
+			buffers.push_back(buffers_arr[i]);
+		}
+		return Add(buffers);
+	}
 };

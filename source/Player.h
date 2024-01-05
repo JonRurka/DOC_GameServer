@@ -57,16 +57,16 @@ public:
 	std::vector<uint8_t> Serialize_Orientation() {
 
 		float rot_buf[7] = {
-			m_location.x / 100,
-			m_location.y / 100,
-			m_location.z / 100,
+			m_location.x,
+			m_location.y,
+			m_location.z,
 			m_rotation.x,
 			m_rotation.y,
 			m_rotation.z,
 			m_rotation.w
 		};
 
-		std::vector<uint8_t> or_arr(rot_buf, rot_buf + 7);
+		std::vector<uint8_t> or_arr(((uint8_t*)rot_buf), ((uint8_t*)rot_buf) + (7 * sizeof(float)));
 		return or_arr;
 	}
 

@@ -167,8 +167,9 @@ void Match::SendOrientationUpdates()
 
 			std::vector<uint8_t> player_orient_buff = player->Serialize_Orientation();
 			player_orient_buff = BufferUtils::AddFirst(player->Get_MatchInstanceID(), player_orient_buff);
-			
-			send_buff = BufferUtils::Add({send_buff, player_orient_buff});
+
+			send_buff = BufferUtils::Add(send_buff, player_orient_buff);
+
 			num_orientations++;
 		}
 		send_buff = BufferUtils::AddFirst(num_orientations, send_buff);
@@ -216,16 +217,16 @@ void Match::StartMatch_NetCmd(AsyncServer::SocketUser* user, Data data)
 void Match::UpdateOrientation_NetCmd(AsyncServer::SocketUser* user, Data data)
 {
 	float* loc_buff = (float*)data.Buffer.data();
-	float* rot_buff = &((float*)data.Buffer.data())[3];
+	//float* rot_buff = &((float*)data.Buffer.data())[3];
 
 	float loc_x = loc_buff[0];
 	float loc_y = loc_buff[1];
 	float loc_z = loc_buff[2];
 
-	float rot_x = rot_buff[0];
-	float rot_y = rot_buff[1];
-	float rot_z = rot_buff[2];
-	float rot_w = rot_buff[3];
+	float rot_x = loc_buff[3];
+	float rot_y = loc_buff[4];
+	float rot_z = loc_buff[5];
+	float rot_w = loc_buff[6];
 
 	glm::vec3 location = glm::vec3(loc_x, loc_y, loc_z);
 	glm::quat rotation = glm::quat(rot_w, rot_x, rot_y, rot_z);
@@ -238,7 +239,7 @@ void Match::UpdateOrientation_NetCmd(AsyncServer::SocketUser* user, Data data)
 	std::string loc_str = "(" + std::to_string(loc_x) + ", " + std::to_string(loc_y) + ", " + std::to_string(loc_z) + ")";
 	std::string rot_str = "(" + std::to_string(rot_x) + ", " + std::to_string(rot_y) + ", " + std::to_string(rot_z) + ", " + std::to_string(rot_w) + ")";
 		
-	//Logger::Log("Received orientation update: " + loc_str + ", " + rot_str + ", " + std::to_string(data.Type));
+	//Logger::Log("Received orientation update ("+std::to_string(data.Buffer.size()) + "): " + loc_str + ", " + rot_str + ", " + std::to_string(data.Type));
 }
 
 void Match::SubmitMatchCommand(AsyncServer::SocketUser* user, Data data)
