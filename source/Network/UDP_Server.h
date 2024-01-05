@@ -12,11 +12,17 @@ using boost::asio::ip::address_v4;
 
 #define MAX_UDP_SIZE UINT16_MAX
 
+//socket_(io_service, udp::endpoint(udp::v4(), port)
+
 class udp_server {
 public:
 	udp_server(AsyncServer* server, boost::asio::io_service& io_service, int port)
-		: io_service_(io_service), socket_(io_service, udp::endpoint(udp::v4(), port))
+		: io_service_(io_service), 
+		  send_socket_(io_service, udp::v4()), 
+		  recv_socket_(io_service, udp::endpoint(udp::v4(), port))
 	{
+		//recv_socket_(io_service, udp::endpoint(udp::v4(), port);
+		//socket_.open(udp::v4());
 		async_server = server;
 		m_port = port;
 		start_receive();
@@ -32,7 +38,7 @@ public:
 private:
 	void start_receive();
 
-	void handle_receive(const boost::system::error_code& error, size_t transfered);
+	void handle_receive(const boost::system::error_code& error, size_t transfered/*, udp::endpoint endpoint*/ );
 
 	void handle_send(uint64_t s_id);
 
@@ -41,7 +47,8 @@ private:
 	}
 
 	int m_port;
-	udp::socket socket_;
+	udp::socket send_socket_;
+	udp::socket recv_socket_;
 	AsyncServer* async_server;
 	std::map<uint64_t, uint8_t*> send_buffers;
 	int numSends = 0;

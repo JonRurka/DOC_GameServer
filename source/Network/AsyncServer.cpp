@@ -201,7 +201,7 @@ void AsyncServer::Test_Server(void* obj)
     //cout << "Servent sent Hello message to Client!" << endl;
 }
 
-void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer)
+void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer, boost::asio::ip::address endpoint)
 {
     if (buffer.size() >= 3)
     {
@@ -212,6 +212,10 @@ void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer)
         buffer = BufferUtils::RemoveFront(Remove_CMD, buffer);
         
         if (Has_UDP_ID(udp_id)) {
+
+            //Logger::Log(endpoint.address().to_string());
+            
+            // Compare address to client.
 
             SocketUser* socket_user = m_udp_id_map[udp_id];
             Data data(Protocal_Udp, command, buffer);
@@ -283,10 +287,14 @@ void AsyncServer::System_Cmd(AsyncServer::SocketUser* socket_user, Data data)
     case 0x02: // disconnect
         RemovePlayer(socket_user);
         break;
-    case 0x03:
+    case 0x03: // ping
         socket_user->ResetPingCounter();
         socket_user->Send(OpCodes::Client::System_Reserved, std::vector<uint8_t>({ 0x03, 0x01 }), Protocal_Tcp);
         //Logger::Log("Received ping");
+        break;
+    case 0x04: // set UDP client port
+        uint16_t port = *((uint16_t*)data.Buffer.data());
+        socket_user->Set_Client_UDP_Port(port);
         break;
     }
 }

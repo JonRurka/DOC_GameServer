@@ -6,7 +6,7 @@
 #include "../Server_Main.h"
 #include "../IUser.h"
 
-AsyncServer::SocketUser::SocketUser(AsyncServer* server, tcp_connection::pointer client)
+AsyncServer::SocketUser::SocketUser(AsyncServer* server, tcp_connection::pointer client) 
 {
 	int udp_client_port = UDP_PORT;
 	if (SERVER_LOCAL) {
@@ -104,6 +104,13 @@ void AsyncServer::SocketUser::SetUser(IUser* user)
 	{
 		Logger::Log("IUser null");
 	}
+}
+
+void AsyncServer::SocketUser::Set_Client_UDP_Port(uint16_t port)
+{
+	Logger::Log("Set client UDP port to " + std::to_string((int)port));
+	UdpEndPoint.port(port);
+	//UdpEndPoint = udp::endpoint(TcpEndPoint.address(), port);
 }
 
 void AsyncServer::SocketUser::Send(OpCodes::Client command, std::string message, Protocal type)

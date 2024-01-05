@@ -47,6 +47,7 @@ bool Match::JoinPlayer(Player* player)
 
 	player->Set_Active_Match(this);
 	m_players[player->Get_UserID()] = player;
+	player->Set_MatchInstanceID(m_players.size());
 
 	return true;
 }
@@ -86,7 +87,7 @@ void Match::StartMatch()
 
 		player_obj["UserName"] = player->Get_UserName();
 		player_obj["User_ID"] = player->Get_UserID();
-		//player_obj["Instance_ID"] = i;
+		player_obj["Instance_ID"] = player->Get_MatchInstanceID();
 
 		player_arr[i] = player_obj;
 		i++;
@@ -157,7 +158,22 @@ void Match::SendOrientationUpdates()
 
 	if ((now - m_last_orientation_update) > ORIENTATION_SEND_RATE) {
 
+		std::vector<uint8_t> send_buff;
 
+		uint8_t num_orientations = 0;
+		for (auto& pair : m_players) {
+
+			Player* player = pair.second;
+
+			std::vector<uint8_t> player_orient_buff = player->Serialize_Orientation();
+			player_orient_buff = BufferUtils::AddFirst(player->Get_MatchInstanceID(), player_orient_buff);
+			
+			send_buff = BufferUtils::Add({send_buff, player_orient_buff});
+			num_orientations++;
+		}
+		send_buff = BufferUtils::AddFirst(num_orientations, send_buff);
+
+		BroadcastCommand(OpCodes::Client::Update_Orientations, send_buff, Protocal_Udp);
 
 
 		m_last_orientation_update = Server_Main::GetEpoch();
@@ -219,10 +235,10 @@ void Match::UpdateOrientation_NetCmd(AsyncServer::SocketUser* user, Data data)
 	player->Set_Location(location);
 	player->Set_Rotation(rotation);
 
-	//std::string loc_str = "(" + std::to_string(loc_x) + ", " + std::to_string(loc_y) + ", " + std::to_string(loc_z) + ")";
-	//std::string rot_str = "(" + std::to_string(rot_x) + ", " + std::to_string(rot_y) + ", " + std::to_string(rot_z) + ", " + std::to_string(rot_w) + ")";
+	std::string loc_str = "(" + std::to_string(loc_x) + ", " + std::to_string(loc_y) + ", " + std::to_string(loc_z) + ")";
+	std::string rot_str = "(" + std::to_string(rot_x) + ", " + std::to_string(rot_y) + ", " + std::to_string(rot_z) + ", " + std::to_string(rot_w) + ")";
 		
-	//Logger::Log("Received orientation update: " + loc_str + ", " + rot_str);
+	//Logger::Log("Received orientation update: " + loc_str + ", " + rot_str + ", " + std::to_string(data.Type));
 }
 
 void Match::SubmitMatchCommand(AsyncServer::SocketUser* user, Data data)

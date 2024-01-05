@@ -11,10 +11,10 @@ void udp_server::start_receive()
 
 	udp::endpoint remote_endpoint = udp::endpoint(address_v4::any(), port);
 
-	socket_.async_receive_from(
+	recv_socket_.async_receive_from(
 		boost::asio::buffer(recv_buffer_, MAX_UDP_SIZE), remote_endpoint,
 		boost::bind(&udp_server::handle_receive, this,
-			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred/*, boost::asio::placeholders::endpoint */));
 }
 
 void udp_server::close()
@@ -23,13 +23,14 @@ void udp_server::close()
 	m_thread.join();
 }
 
-void udp_server::handle_receive(const boost::system::error_code& error, size_t transfered)
+void udp_server::handle_receive(const boost::system::error_code& error, size_t transfered/*, udp::endpoint endpoint*/ )
 {
 	if (error)
 	{
-		Logger::Log("UDP Error!");
+		Logger::Log("UDP Error: " + error.what());
 		start_receive();
 		return;
+
 	}
 
 	if (transfered <= 0) {
@@ -70,8 +71,9 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 	//delete[] message;
 
 	
-	
-	async_server->Receive_UDP(msg);
+	udp::endpoint remote_endpoint = udp::endpoint(address_v4::any(), m_port);
+
+	async_server->Receive_UDP(msg, remote_endpoint.address());
 
 }
 
@@ -97,9 +99,11 @@ void udp_server::Send(udp::endpoint remote_endpoint, std::vector<uint8_t> sendin
 	send_buffers[id] = new uint8_t[sending.size()];
 	memcpy(send_buffers[id], sending.data(), sending.size());
 
-	Logger::Log("UDP Sent: " + std::to_string(sending.size()));
+	//Logger::Log("UDP Sent: " + std::to_string(sending.size()) + " on port " + std::to_string(remote_endpoint.port()));
 
-	socket_.async_send_to(boost::asio::buffer(send_buffers[id], sending.size()), remote_endpoint,
+	//recv_socket_.bind(remote_endpoint);
+
+	recv_socket_.async_send_to(boost::asio::buffer(send_buffers[id], sending.size()), remote_endpoint,
 		boost::bind(&udp_server::handle_send, this, id));
 }
 

@@ -21,6 +21,7 @@ public:
 		Identify_Result = 0x01,
 		Join_Match_Result = 0x02,
 		Start_Match = 0x03,
+		Update_Orientations = 0x04
 	};
 
 	

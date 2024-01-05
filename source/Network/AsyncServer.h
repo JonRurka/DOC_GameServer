@@ -21,8 +21,8 @@ class Server_Main;
 #define TIMEOUT_MS 10000
 #define RUN_ASYNC_COMMANDS true
 
-#define TCP_PORT 1000
-#define UDP_PORT 1001
+#define TCP_PORT 11010
+#define UDP_PORT 11011
 
 #define SERVER_LOCAL true
 
@@ -52,6 +52,8 @@ public:
 		AsyncServer* _server;
 		boost::timer timeOutWatch;
 		bool IsAuthenticated;
+
+		//udp::socket send_socket_;
 
 	public:
 
@@ -90,6 +92,8 @@ public:
 		uint16_t Get_UDP_ID() {
 			return UdpID;
 		}
+
+		void Set_Client_UDP_Port(uint16_t port);
 
 		void Send(OpCodes::Client command, std::string message, Protocal type = Protocal_Tcp);
 
@@ -146,7 +150,7 @@ public:
 	static void Test_Client();
 	static void Test_Server(void* obj);
 
-	void Receive_UDP(std::vector<uint8_t> data);
+	void Receive_UDP(std::vector<uint8_t> data, boost::asio::ip::address endpoint);
 
 	void handle_accept(const boost::system::error_code& error);
 

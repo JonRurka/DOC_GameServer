@@ -25,6 +25,14 @@ public:
 		return m_UserID;
 	}
 
+	uint8_t Get_MatchInstanceID() {
+		return m_match_instance_id;
+	}
+
+	void Set_MatchInstanceID(uint8_t id) {
+		m_match_instance_id = id;
+	}
+
 	int Get_Distributor() {
 		return m_distributor;
 	}
@@ -68,6 +76,8 @@ private:
 	std::string m_distro_userID;
 	uint32_t m_UserID;
 	int m_distributor;
+
+	uint8_t m_match_instance_id;
 
 	Match* m_active_match;
 
