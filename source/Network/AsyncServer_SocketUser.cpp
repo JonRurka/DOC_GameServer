@@ -109,7 +109,7 @@ void SocketUser::Set_Client_UDP_Port(uint16_t port)
 {
 	Logger::Log("Set client UDP port to " + std::to_string((int)port));
 	UdpEndPoint.port(port);
-	//_server->m_udp_server->AbortListen();
+	_server->m_udp_server->AbortListen();
 	//_server->m_udp_server->start_receive(shared_from_this());
 	//UdpEndPoint = udp::endpoint(TcpEndPoint.address(), port);
 }

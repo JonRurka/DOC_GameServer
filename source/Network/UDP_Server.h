@@ -43,14 +43,11 @@ public:
 
 private:
 	
-	void handle_receive(const boost::system::error_code& error, size_t transfered/*, uint8_t* buffer, udp::endpoint endpoint, std::shared_ptr<SocketUser> socket_user*/ );
+	void handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, std::shared_ptr<SocketUser> socket_user);
 
 	void handle_send(uint64_t s_id);
 
-	static void RunService(udp_server* svr) {
-		Logger::Log("Running UPD io_service_");
-		svr->io_service_.run();
-	}
+	static void RunService(udp_server* svr);
 
 	int m_port;
 	//udp::socket send_socket_;
@@ -63,4 +60,5 @@ private:
 	std::thread m_thread;
 	boost::asio::io_service& io_service_;
 	std::mutex m_send_lock;
+	bool m_running;
 };

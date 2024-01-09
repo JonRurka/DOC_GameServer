@@ -10,6 +10,12 @@ using namespace boost;
 Player::Player()
 {
 	m_sent_last_jump = Server_Main::GetEpoch();
+	m_active_match = nullptr;
+	m_match_instance_id = 0;
+	m_location = glm::vec3(0, 0, 0);
+	m_rotation = glm::quat();
+	m_sent_last_jump = Server_Main::GetEpoch();
+
 }
 
 Player::~Player()
