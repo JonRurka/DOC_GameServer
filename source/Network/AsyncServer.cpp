@@ -31,11 +31,17 @@ AsyncServer::AsyncServer(Server_Main* server)
 void AsyncServer::Update(float dt)
 {
     m_user_mtx.lock();
+    std::vector<std::shared_ptr<SocketUser>> tmp_users;
+
     for (const auto& user : m_socket_users) {
         // TODO: Fix crash
-        user.second->Update(dt);
+        tmp_users.push_back(user.second);
     }
     m_user_mtx.unlock();
+
+    for (auto& usr : tmp_users) {
+        usr->Update(dt);
+    }
     
 
     while (!m_main_command_queue.empty()) {
