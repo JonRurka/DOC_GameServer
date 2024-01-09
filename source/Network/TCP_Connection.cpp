@@ -102,7 +102,13 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 	//SocketUser* socket_usr = (SocketUser*)socket_user;
 
 	if (err) {
-		Logger::Log("TCP Read Error: " + err.what());
+		if (err.value() == 10054) {
+			Logger::Log("TCP client disconnected.");
+			socket_user.lock()->Close(false);
+			return;
+		}
+
+		Logger::Log("TCP Read Error (" + std::to_string(err.value()) + "): " + err.what());
 		return;
 	}
 

@@ -12,14 +12,15 @@ void udp_server::start_receive(std::shared_ptr<SocketUser> socket_user)
 	}
 
 	uint8_t* buffer = new uint8_t[MAX_UDP_SIZE];
+	//ZeroMemory(buffer, MAX_UDP_SIZE);
 
 	//socket_user->UdpEndPoint.port()
 	udp::endpoint remote_endpoint = udp::endpoint(address_v4::any(), socket_user->UdpEndPoint.port()); //udp::endpoint(address_v4::any(), port);
 
-	Logger::Log("Receiving UDP from socket_user: " + std::to_string(remote_endpoint.port()));
+	//Logger::Log("Receiving UDP from socket_user: " + std::to_string(remote_endpoint.port()));
 
 	recv_socket_.async_receive_from(
-		boost::asio::buffer(recv_buffer_, MAX_UDP_SIZE), remote_endpoint,
+		boost::asio::buffer(buffer, MAX_UDP_SIZE), remote_endpoint,
 		boost::bind(&udp_server::handle_receive, this,
 			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred, buffer, remote_endpoint, socket_user));
 }
@@ -34,7 +35,6 @@ void udp_server::close()
 
 void udp_server::handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, std::shared_ptr<SocketUser> socket_user)
 {
-	//Logger::Log("UDP error code: " + std::to_string(error.value()));
 	if (error)
 	{
 		if (error.value() == boost::asio::error::operation_aborted) {
@@ -50,7 +50,7 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 			}
 		}
 
-		Logger::Log("UDP Receive Error: " + error.what());
+		Logger::Log("UDP Receive Error (" + std::to_string(error.value()) + "): " + error.what());
 		start_receive(socket_user);
 		return;
 
@@ -62,30 +62,13 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 		return;
 	}
 
-	Logger::Log("received UDP packet");
+	//Logger::Log("received UDP packet");
 
-	//uint8_t* message = new uint8_t[transfered];
-	//memcpy(message, recv_buffer_.data(), transfered);
+	uint16_t size = *((uint16_t*)buffer);
 
-	//uint16_t size = *((uint16_t*)&length_buff);
-
-	//uint8_t* message = new uint8_t[size];
-
-	/*try {
-		//boost::asio::read(socket_, boost::asio::buffer(message, size));
-	}
-	catch (boost::system::system_error ex) {
-		Logger::Log("UDP system_error!");
-		start_receive();
-		return;
-	}*/
-
-	//std::vector<uint8_t> msg(message, message + transfered);
-
-	uint16_t size = *((uint16_t*)&buffer);
 	std::vector<uint8_t> msg(buffer, buffer + (size + 2));
 
-	delete buffer;
+	delete[] buffer;
 
 	//Logger::Log("Received buffer of length: " + std::to_string(msg.size()));
 
@@ -94,13 +77,8 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 	// Start receiving new data as soon as possible and yeet this data onto a queue.
 	start_receive(socket_user);
 
-	//std::vector msg(message, message + transfered);
-	//delete[] message;
 
-	
-	udp::endpoint remote_endpoint = udp::endpoint(address_v4::any(), m_port);
-
-	async_server->Receive_UDP(msg, remote_endpoint.address());
+	async_server->Receive_UDP(msg, endpoint.address());
 
 }
 

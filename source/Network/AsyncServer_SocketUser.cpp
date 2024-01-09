@@ -56,7 +56,7 @@ void SocketUser::HandleStartConnect_Finished(bool successfull)
 		Set_UDP_ID(udp_id);
 		_server->Add_UDP_ID(udp_id, shared_from_this());
 		uint8_t* udp_buf = (uint8_t*)&udp_id;
-		EnableUdp(11040);
+		EnableUdp(UDP_PORT);
 
 		//user.UdpID = udpid;
 		//AddUdpID(udpid, user.SessionToken);

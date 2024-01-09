@@ -81,27 +81,29 @@ void AsyncServer::AddCommand(OpCodes::Server cmd, CommandActionPtr callback, voi
 
 void AsyncServer::AddPlayer(std::shared_ptr<SocketUser> user)
 {
-    m_user_mtx.lock();
     if (!HasPlayerSession(user->SessionToken)) {
+        m_user_mtx.lock();
         m_socket_users[user->SessionToken] = user;
         m_server->UserConnected(user);
+        m_user_mtx.unlock();
     }
-    m_user_mtx.unlock();
 }
 
 void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser> user)
 {
-    m_user_mtx.lock();
+    
     std::string session_token = user->SessionToken;
     uint16_t udp_id =  user->Get_UDP_ID();
     if (HasPlayerSession(session_token)) {
+        m_user_mtx.lock();
         m_socket_users.erase(session_token);
         m_udp_id_map.erase(udp_id);
+        m_user_mtx.unlock();
         m_server->UserDisconnected(user);
         user->Close(false);
         //delete user;
+        
     }
-    m_user_mtx.unlock();
     
 }
 
