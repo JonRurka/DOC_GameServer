@@ -1,9 +1,12 @@
 #include "Match.h"
 #include "Network/AsyncServer.h"
+#include "Network/SocketUser.h"
+#include "IUser.h"
 #include "Player.h"
 #include "Network/BufferUtils.h"
 #include "HashHelper.h"
 #include "Server_Main.h"
+#include "MatchManager.h"
 
 #include <boost/json.hpp>
 
@@ -35,7 +38,7 @@ void Match::Stop()
 	}
 }
 
-bool Match::JoinPlayer(Player* player)
+bool Match::JoinPlayer(std::shared_ptr<Player> player)
 {
 	if (m_match_state != MatchState::Joined_Waiting) {
 		Logger::Log("Tried to add player in invalid match state.");
@@ -45,24 +48,30 @@ bool Match::JoinPlayer(Player* player)
 	// In a isolated match, join any player,
 	// In a network match, only join assigned players.
 
+	m_player_mtx.lock();
+
 	player->Set_Active_Match(this);
 	m_players[player->Get_UserID()] = player;
 	player->Set_MatchInstanceID(m_players.size());
 
+	m_player_mtx.unlock();
+
 	return true;
 }
 
-bool Match::RemovePlayer(Player* player)
+bool Match::RemovePlayer(std::shared_ptr<Player> player)
 {
+	m_player_mtx.lock();
 	if (HasPlayer(player)) {
 		player->Set_Active_Match(nullptr);
 		m_players.erase(player->Get_UserID());
 		return true;
 	}
+	m_player_mtx.unlock();
 	return false;
 }
 
-bool Match::HasPlayer(Player* player)
+bool Match::HasPlayer(std::shared_ptr<Player> player)
 {
 	return m_players.find(player->Get_UserID()) != m_players.end();
 }
@@ -80,10 +89,12 @@ void Match::StartMatch()
 	json::array player_arr(m_players.size());
 
 	int i = 0;
+
+	m_player_mtx.lock();
 	for (auto& pair : m_players) {
 		json::object player_obj;
 
-		Player* player = pair.second;
+		std::shared_ptr<Player> player = pair.second;
 
 		player_obj["UserName"] = player->Get_UserName();
 		player_obj["User_ID"] = player->Get_UserID();
@@ -92,6 +103,7 @@ void Match::StartMatch()
 		player_arr[i] = player_obj;
 		i++;
 	}
+	m_player_mtx.unlock();
 
 	obj["players"] = player_arr;
 
@@ -103,7 +115,14 @@ void Match::StartMatch()
 	m_match_state = MatchState::Started;
 	BroadcastCommand(OpCodes::Client::Start_Match, match_start_data);
 
-	Logger::Log("Match " + m_ID + " started.");
+	Logger::Log("Match " + m_ID + " started");
+}
+
+void Match::EndMatch()
+{
+	m_match_state = MatchState::Ended;
+	Stop();
+	MatchManager::GetInstance()->RemoveMatch(m_ID);
 }
 
 void Match::BroadcastCommand(OpCodes::Client cmd, std::vector<uint8_t> data, Protocal type)
@@ -111,8 +130,17 @@ void Match::BroadcastCommand(OpCodes::Client cmd, std::vector<uint8_t> data, Pro
 	for (auto& pair : m_players) {
 		if (pair.second != nullptr) {
 			// could crash if player removed at wrong time.
-			pair.second->Socket_User()->Send(cmd, data, type);
+			//Logger::Log("Sent match start command");
+			pair.second->Send(cmd, data, type);
 		}
+	}
+}
+
+void Match::SubmitPlayerEvent(std::shared_ptr<SocketUser> user, OpCodes::Player_Events event_cmd, std::vector<uint8_t> data)
+{
+	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
+	if (player != nullptr && user->Get_Authenticated()) {
+		player->Add_Player_Event(event_cmd, data);
 	}
 }
 
@@ -148,12 +176,33 @@ void Match::GameLoop()
 
 void Match::AsynUpdate()
 {
+	float dt = 0;
+
 	ProcessNetCommands();
+	UpdatePlayers(dt);
 	SendOrientationUpdates();
+	SendPlayerEvents();
+}
+
+void Match::UpdatePlayers(float dt)
+{
+	m_player_mtx.lock();
+	for (auto& pair : m_players) {
+		if (pair.second == nullptr) {
+			continue;
+		}
+
+		pair.second->MatchUpdate(dt);
+	}
+	m_player_mtx.unlock();
 }
 
 void Match::SendOrientationUpdates()
 {
+	if (m_match_state != MatchState::Started) {
+		return;
+	}
+
 	uint64_t now = Server_Main::GetEpoch();
 
 	if ((now - m_last_orientation_update) > ORIENTATION_SEND_RATE) {
@@ -161,9 +210,10 @@ void Match::SendOrientationUpdates()
 		std::vector<uint8_t> send_buff;
 
 		uint8_t num_orientations = 0;
+		m_player_mtx.lock();
 		for (auto& pair : m_players) {
 
-			Player* player = pair.second;
+			std::shared_ptr<Player> player = pair.second;
 
 			std::vector<uint8_t> player_orient_buff = player->Serialize_Orientation();
 			player_orient_buff = BufferUtils::AddFirst(player->Get_MatchInstanceID(), player_orient_buff);
@@ -172,6 +222,7 @@ void Match::SendOrientationUpdates()
 
 			num_orientations++;
 		}
+		m_player_mtx.unlock();
 		send_buff = BufferUtils::AddFirst(num_orientations, send_buff);
 
 		BroadcastCommand(OpCodes::Client::Update_Orientations, send_buff, Protocal_Udp);
@@ -182,39 +233,92 @@ void Match::SendOrientationUpdates()
 
 }
 
+void Match::SendPlayerEvents()
+{
+	if (m_match_state != MatchState::Started) {
+		return;
+	}
+
+	std::vector<uint8_t> send_buff;
+
+	uint8_t num_events = 0;
+	m_player_mtx.lock();
+	for (auto& pair : m_players) {
+		std::shared_ptr<Player> player = pair.second;
+
+		if (player == nullptr) {
+			continue;
+		}
+
+		num_events += player->SerializePlayerEvents(send_buff);
+	}
+	m_player_mtx.unlock();
+
+	if (num_events == 0) {
+		return;
+	}
+
+
+	//Logger::Log("Broadcast events: " + std::to_string(num_events));
+	send_buff = BufferUtils::AddFirst(num_events, send_buff);
+	BroadcastCommand(OpCodes::Client::Player_Events, send_buff);
+
+}
+
 void Match::ProcessNetCommands()
 {
 	while (!m_command_queue.empty()) {
 		NetCommand data = m_command_queue.front();
 		m_command_queue.pop();
 
-		ExecuteNetCommand(data.user, data.data);
+		if (!data.user.expired()) {
+			ExecuteNetCommand(data.user.lock(), data.data);
+		}
 	}
 }
 
-void Match::ExecuteNetCommand(AsyncServer::SocketUser* user, Data data)
+void Match::ExecuteNetCommand(std::shared_ptr<SocketUser> user, Data data)
 {
-	OpCodes::Server_Match sub_command = (OpCodes::Server_Match)data.Buffer[0];
-	data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
+	
 
-	switch (sub_command) {
-	case OpCodes::Server_Match::Debug_Start:
-		StartMatch_NetCmd(user, data);
-		break;
-	case OpCodes::Server_Match::Update_Orientation:
-		UpdateOrientation_NetCmd(user, data);
-		break;
+	if (data.Buffer.size() > 0) {
+		OpCodes::Server_Match sub_command = (OpCodes::Server_Match)data.Buffer[0];
+		data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
+
+		switch (sub_command) {
+		case OpCodes::Server_Match::Debug_Start:
+			StartMatch_NetCmd(user, data);
+			break;
+		case OpCodes::Server_Match::Update_Orientation:
+			UpdateOrientation_NetCmd(user, data);
+			break;
+		case OpCodes::Server_Match::Player_Event:
+			if (data.Buffer.size() > 0)
+			{
+				OpCodes::Player_Events event_cmd = (OpCodes::Player_Events)data.Buffer[0];
+				data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
+				SubmitPlayerEvent(user, event_cmd, data.Buffer);
+			}
+			else {
+
+				Logger::LogWarning("Received malformed Match Player Event from '" + Player::Cast_IUser(user->GetUser())->Get_UserName() + "'!");
+			}
+			break;
+		}
+	}
+	else {
+		Logger::LogWarning("Received malformed Match Net Command from '" + Player::Cast_IUser(user->GetUser())->Get_UserName() + "'!");
 	}
 }
 
-void Match::StartMatch_NetCmd(AsyncServer::SocketUser* user, Data data)
+void Match::StartMatch_NetCmd(std::shared_ptr<SocketUser> user, Data data)
 {
 	// check if isolated mode
 
 	StartMatch();
 }
 
-void Match::UpdateOrientation_NetCmd(AsyncServer::SocketUser* user, Data data)
+void Match::UpdateOrientation_NetCmd(std::shared_ptr<SocketUser> user, Data data)
 {
 	float* loc_buff = (float*)data.Buffer.data();
 	//float* rot_buff = &((float*)data.Buffer.data())[3];
@@ -231,7 +335,7 @@ void Match::UpdateOrientation_NetCmd(AsyncServer::SocketUser* user, Data data)
 	glm::vec3 location = glm::vec3(loc_x, loc_y, loc_z);
 	glm::quat rotation = glm::quat(rot_w, rot_x, rot_y, rot_z);
 
-	Player* player = (Player*)user->GetUser();
+	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
 
 	player->Set_Location(location);
 	player->Set_Rotation(rotation);
@@ -239,10 +343,10 @@ void Match::UpdateOrientation_NetCmd(AsyncServer::SocketUser* user, Data data)
 	std::string loc_str = "(" + std::to_string(loc_x) + ", " + std::to_string(loc_y) + ", " + std::to_string(loc_z) + ")";
 	std::string rot_str = "(" + std::to_string(rot_x) + ", " + std::to_string(rot_y) + ", " + std::to_string(rot_z) + ", " + std::to_string(rot_w) + ")";
 		
-	//Logger::Log("Received orientation update ("+std::to_string(data.Buffer.size()) + "): " + loc_str + ", " + rot_str + ", " + std::to_string(data.Type));
+	Logger::Log("Received orientation update ("+std::to_string(data.Buffer.size()) + "): " + loc_str + ", " + rot_str + ", " + std::to_string(data.Type));
 }
 
-void Match::SubmitMatchCommand(AsyncServer::SocketUser* user, Data data)
+void Match::SubmitMatchCommand(std::shared_ptr<SocketUser> user, Data data)
 {
 	NetCommand command;
 	command.user = user;

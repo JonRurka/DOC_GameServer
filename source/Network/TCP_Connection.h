@@ -1,6 +1,9 @@
 #pragma once
 #include "../stdafx.h"
 
+class AsyncServer;
+class SocketUser;
+
 using boost::asio::ip::tcp;
 using boost::asio::ip::address;
 
@@ -13,7 +16,7 @@ private:
 	uint8_t length_buff[2];
 	std::map<uint64_t, uint8_t*> send_buffers;
 	int numSends = 0;
-	void* socket_user = nullptr;
+	std::weak_ptr<SocketUser> socket_user;
 public:
 	typedef boost::shared_ptr<tcp_connection> pointer;
 
@@ -27,7 +30,7 @@ public:
 		return socket_;
 	}
 
-	void Set_Socket_User(void* p_socket_user) {
+	void Set_Socket_User(std::weak_ptr<SocketUser> p_socket_user) {
 		socket_user = p_socket_user;
 	}
 
@@ -37,7 +40,7 @@ public:
 
 	void Start_Read();
 
-	void Start_Initial_Connect();
+	void Start_Initial_Connect(std::shared_ptr<SocketUser> p_socket_user);
 
 	void close();
 
@@ -51,7 +54,10 @@ private:
 
 	void handle_write(const boost::system::error_code&, size_t transfered, uint64_t s_id);
 
-	void Handle_Initial_Connect(const boost::system::error_code&, size_t transfered);
+	void Handle_Initial_Connect(
+		const boost::system::error_code&, 
+		size_t transfered,
+		std::shared_ptr<SocketUser> p_socket_user);
 
 	void handle_read(const boost::system::error_code&, size_t transfered);
 };

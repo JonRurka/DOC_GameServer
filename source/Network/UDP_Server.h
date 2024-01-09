@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../stdafx.h"
+#include "../Logger.h"
 
 class AsyncServer;
+class SocketUser;
 
 using namespace boost::asio;
 using boost::asio::ip::tcp;
@@ -18,14 +20,14 @@ class udp_server {
 public:
 	udp_server(AsyncServer* server, boost::asio::io_service& io_service, int port)
 		: io_service_(io_service), 
-		  send_socket_(io_service, udp::v4()), 
+		  //send_socket_(io_service, udp::v4()), 
 		  recv_socket_(io_service, udp::endpoint(udp::v4(), port))
 	{
 		//recv_socket_(io_service, udp::endpoint(udp::v4(), port);
 		//socket_.open(udp::v4());
+		Logger::Log("Receiving UDP on port " + std::to_string(port));
 		async_server = server;
 		m_port = port;
-		start_receive();
 		m_thread = std::thread(RunService, this);
 	}
 
@@ -35,19 +37,23 @@ public:
 
 	void Send(udp::endpoint remote_endpoint, std::vector<uint8_t> sending);
 
-private:
-	void start_receive();
+	void start_receive(std::shared_ptr<SocketUser> socket_user);
 
-	void handle_receive(const boost::system::error_code& error, size_t transfered/*, udp::endpoint endpoint*/ );
+	void AbortListen();
+
+private:
+	
+	void handle_receive(const boost::system::error_code& error, size_t transfered/*, uint8_t* buffer, udp::endpoint endpoint, std::shared_ptr<SocketUser> socket_user*/ );
 
 	void handle_send(uint64_t s_id);
 
 	static void RunService(udp_server* svr) {
+		Logger::Log("Running UPD io_service_");
 		svr->io_service_.run();
 	}
 
 	int m_port;
-	udp::socket send_socket_;
+	//udp::socket send_socket_;
 	udp::socket recv_socket_;
 	AsyncServer* async_server;
 	std::map<uint64_t, uint8_t*> send_buffers;
@@ -56,4 +62,5 @@ private:
 	uint8_t length_buff[2];
 	std::thread m_thread;
 	boost::asio::io_service& io_service_;
+	std::mutex m_send_lock;
 };

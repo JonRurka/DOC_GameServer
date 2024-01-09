@@ -19,6 +19,7 @@ set(${PROJECT_NAME}_sources
 	Server_Main.cpp
 	Logger.cpp
 	CommandExecuter.cpp
+	IUser.cpp
 	MatchManager.cpp
 	Match.cpp
 	Player.cpp

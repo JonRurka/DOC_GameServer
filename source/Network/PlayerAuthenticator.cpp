@@ -9,16 +9,16 @@ PlayerAuthenticator::PlayerAuthenticator(Server_Main* server_inst)
 	m_initialized = true;
 }
 
-void PlayerAuthenticator::Authenticate(Player* player)
+void PlayerAuthenticator::Authenticate(std::shared_ptr<Player> player)
 {
-	//AsyncServer::SocketUser* user = (AsyncServer::SocketUser*)socket_user;
+	//SocketUser* user = (SocketUser*)socket_user;
 
 	// TODO: Logic to authorize player.
 
 	HasAuthenticatedPlayer(player, true);
 }
 
-void PlayerAuthenticator::HasAuthenticatedPlayer(Player* player, bool authorized)
+void PlayerAuthenticator::HasAuthenticatedPlayer(std::shared_ptr<Player> player, bool authorized)
 {
 	m_server->PlayerAuthenticated(player, authorized);
 }

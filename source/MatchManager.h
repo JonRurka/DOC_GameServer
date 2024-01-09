@@ -2,13 +2,15 @@
 
 #include "stdafx.h"
 #include "Network/Data.h"
-#include "Network/AsyncServer.h"
 
+class SocketUser;
 class Match;
+class Player;
 
 #define NEW_MATCH_REQUEST_MS 1000
 
 class MatchManager {
+	friend class Match;
 public:
 
 	struct MatchCreationRequest {
@@ -22,28 +24,32 @@ public:
 
 	void Update(float dt);
 
-	bool AddMatchPlayer(Player* player, std::string match_id);
+	bool AddMatchPlayer(std::shared_ptr<Player> player, std::string match_id);
 
-	Match* GetMatchFromID(std::string id) {
+	std::shared_ptr<Match> GetMatchFromID(std::string id) {
 		if (Has_Match_ID(id)) {
 			return m_matches_IDs[id];
 		}
 		return nullptr;
 	}
 
-	Match* GetMatchFromShortID(uint16_t short_id) {
+	std::shared_ptr<Match> GetMatchFromShortID(uint16_t short_id) {
 		if (Has_Match_Short_ID(short_id)) {
 			return m_matches[short_id];
 		}
 		return nullptr;
 	}
 
-	static void RoutMatchNetCommand_cb(void* obj, AsyncServer::SocketUser* user, Data data) {
+	static MatchManager* GetInstance() {
+		return m_instance;
+	}
+
+	static void RoutMatchNetCommand_cb(void* obj, std::shared_ptr<SocketUser> user, Data data) {
 		MatchManager* mnger = (MatchManager*)obj;
 		mnger->RoutMatchNetCommand(user, data);
 	}
 
-	void RoutMatchNetCommand(AsyncServer::SocketUser* user, Data data);
+	void RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data data);
 
 private:
 
@@ -51,12 +57,14 @@ private:
 
 	uint64_t m_last_new_match_request;
 
-	std::map<uint16_t, Match*> m_matches;
-	std::map<std::string, Match*> m_matches_IDs;
+	std::map<uint16_t, std::shared_ptr<Match>> m_matches;
+	std::map<std::string, std::shared_ptr<Match>> m_matches_IDs;
 
 	void CreateMatches();
 
 	void CreateMatch(MatchCreationRequest request);
+
+	void RemoveMatch(std::string id);
 
 	uint16_t Get_New_Match_Short_ID();
 
@@ -70,8 +78,6 @@ private:
 
 	std::vector<MatchCreationRequest> GetNewMatches();
 	
-	static MatchManager* GetInstance() {
-		return m_instance;
-	}
+	
 
 };

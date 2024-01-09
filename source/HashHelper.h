@@ -29,7 +29,9 @@ public:
 	}
 
 	static std::vector<uint8_t> StringToBytes(std::string input) {
-		return std::vector<uint8_t>(input.begin(), input.end());
+		std::vector<uint8_t> res = std::vector<uint8_t>(input.begin(), input.end());
+		res.push_back((uint8_t)'\0'); // Unreal Engine engine needs it to be null terminated or it will mess up the end of the string when decoding.
+		return res;
 	}
 
 	static std::string BytesToString(std::vector<uint8_t> input) {

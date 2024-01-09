@@ -1,4 +1,5 @@
 #include "AsyncServer.h"
+#include "SocketUser.h"
 #include "../Server_Main.h"
 #include "../Logger.h"
 #include "../HashHelper.h"
@@ -29,20 +30,21 @@ AsyncServer::AsyncServer(Server_Main* server)
 
 void AsyncServer::Update(float dt)
 {
-
+    m_user_mtx.lock();
     for (const auto& user : m_socket_users) {
         // TODO: Fix crash
-        if (user.second != nullptr) {
-            user.second->Update(dt);
-        }
+        user.second->Update(dt);
     }
+    m_user_mtx.unlock();
     
 
     while (!m_main_command_queue.empty()) {
         ThreadCommand thr_command = m_main_command_queue.front();
         m_main_command_queue.pop();
 
-        DoProcess(thr_command.user, thr_command.data);
+        if (!thr_command.user.expired()) {
+            DoProcess(thr_command.user.lock(), thr_command.data);
+        }
     }
 }
 
@@ -59,7 +61,9 @@ void AsyncServer::Process_Async(AsyncServer* svr) {
             ThreadCommand thr_command = svr->m_async_command_queue.front();
             svr->m_async_command_queue.pop();
 
-            svr->DoProcess(thr_command.user, thr_command.data);
+            if (!thr_command.user.expired()) {
+                svr->DoProcess(thr_command.user.lock(), thr_command.data);
+            }
         }
     }
 }
@@ -75,28 +79,30 @@ void AsyncServer::AddCommand(OpCodes::Server cmd, CommandActionPtr callback, voi
     }
 }
 
-void AsyncServer::AddPlayer(SocketUser* user)
+void AsyncServer::AddPlayer(std::shared_ptr<SocketUser> user)
 {
+    m_user_mtx.lock();
     if (!HasPlayerSession(user->SessionToken)) {
-
         m_socket_users[user->SessionToken] = user;
         m_server->UserConnected(user);
     }
-
-    
-
-	//m_authenticator.Authenticate(user);
+    m_user_mtx.unlock();
 }
 
-void AsyncServer::RemovePlayer(SocketUser* user)
+void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser> user)
 {
+    m_user_mtx.lock();
     std::string session_token = user->SessionToken;
+    uint16_t udp_id =  user->Get_UDP_ID();
     if (HasPlayerSession(session_token)) {
         m_socket_users.erase(session_token);
+        m_udp_id_map.erase(udp_id);
         m_server->UserDisconnected(user);
         user->Close(false);
-        delete user;
+        //delete user;
     }
+    m_user_mtx.unlock();
+    
 }
 
 bool AsyncServer::HasPlayerSession(std::string session_key)
@@ -104,7 +110,7 @@ bool AsyncServer::HasPlayerSession(std::string session_key)
     return m_socket_users.find(session_key) != m_socket_users.end();
 }
 
-void AsyncServer::PlayerAuthenticated(SocketUser* user, bool authorized)
+void AsyncServer::PlayerAuthenticated(std::shared_ptr<SocketUser> user, bool authorized)
 {
 	if (authorized) {
 		// set to authorized/
@@ -116,7 +122,7 @@ void AsyncServer::PlayerAuthenticated(SocketUser* user, bool authorized)
 		// Send rejected packet
 		
 		// Destroy user.
-		delete user;
+		//delete user;
 	}
 }
 
@@ -217,7 +223,7 @@ void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer, boost::asio::ip::addr
             
             // Compare address to client.
 
-            SocketUser* socket_user = m_udp_id_map[udp_id];
+            std::shared_ptr<SocketUser> socket_user = m_udp_id_map[udp_id];
             Data data(Protocal_Udp, command, buffer);
             Process(socket_user, data);
         }
@@ -237,7 +243,7 @@ void AsyncServer::handle_accept(const boost::system::error_code& error) {
         Logger::Log("Client connect failed");
 }
 
-void AsyncServer::Process(SocketUser* socket_user, Data data)
+void AsyncServer::Process(std::shared_ptr<SocketUser> socket_user, Data data)
 {
     if (HasCommand(data.command)) {
 
@@ -270,12 +276,12 @@ uint16_t AsyncServer::Get_New_UDP_ID()
     return newNum;
 }
 
-void AsyncServer::DoProcess(SocketUser* socket_user, Data data) {
+void AsyncServer::DoProcess(std::shared_ptr<SocketUser> socket_user, Data data) {
     NetCommand command_obj = m_commands[data.command];
     command_obj.Callback(command_obj.Obj_Ptr, socket_user, data);
 }
 
-void AsyncServer::System_Cmd(AsyncServer::SocketUser* socket_user, Data data)
+void AsyncServer::System_Cmd(std::shared_ptr<SocketUser> socket_user, Data data)
 {
     uint8_t sub_command = data.Buffer[0];
     //UE_LOG(GameClient_Log, Display, TEXT("Received sub command %d"), sub_command);

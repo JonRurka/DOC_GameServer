@@ -1,5 +1,6 @@
 #include "TCP_Server.h"
 #include "AsyncServer.h"
+#include "SocketUser.h"
 #include "../Logger.h"
 
 void tcp_server::start_accept()
@@ -21,9 +22,9 @@ void tcp_server::handle_accept(tcp_connection::pointer new_connection, const boo
 	if (!error)
 	{
 		Logger::Log("Accepting new connection.");
-		AsyncServer::SocketUser* user = new AsyncServer::SocketUser(
+		auto user = std::shared_ptr<SocketUser>(new SocketUser(
 			async_server, 
-			new_connection);
+			new_connection));
 		char result = 0x00;
 		user->HandleStartConnect();
 		//new_connection->Send("test", 4);

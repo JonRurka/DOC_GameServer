@@ -13,11 +13,11 @@ public:
 	}
 	PlayerAuthenticator(Server_Main* server_inst);
 
-	void Authenticate(Player* player);
+	void Authenticate(std::shared_ptr<Player> player);
 
 private:
 	bool m_initialized;
 	Server_Main* m_server;
 
-	void HasAuthenticatedPlayer(Player* player, bool authorized);
+	void HasAuthenticatedPlayer(std::shared_ptr<Player> player, bool authorized);
 };

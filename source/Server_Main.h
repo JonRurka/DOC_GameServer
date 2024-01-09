@@ -1,11 +1,12 @@
 #pragma once
 
 #include "stdafx.h"
-#include "Network/AsyncServer.h"
+#include "Network/Data.h"
 
 class CommandExecuter;
 class Logger;
 class AsyncServer;
+class SocketUser;
 class MatchManager;
 class PlayerAuthenticator;
 class Player;
@@ -32,7 +33,7 @@ private:
 
 	PlayerAuthenticator* m_authenticator;
 
-	std::map<uint32_t, Player*> m_players;
+	std::unordered_map<uint32_t, std::shared_ptr<Player>> m_players;
 
 public:
 
@@ -84,11 +85,11 @@ public:
 		m_executedCommand = command;
 	}
 
-	void UserConnected(void* socket_user);
+	void UserConnected(std::shared_ptr<SocketUser> socket_user);
 
-	void UserDisconnected(void* socket_user);
+	void UserDisconnected(std::shared_ptr<SocketUser> socket_user);
 
-	void PlayerAuthenticated(Player* player, bool authorized);
+	void PlayerAuthenticated(std::shared_ptr<Player>, bool authorized);
 
 	bool Has_Player(uint32_t p_id) {
 		return m_players.find(p_id) != m_players.end();
@@ -111,15 +112,15 @@ public:
 
 	void Dispose();
 
-	static void UserIdentify_cb(void* obj, AsyncServer::SocketUser* user, Data data) {
+	static void UserIdentify_cb(void* obj, std::shared_ptr<SocketUser> user, Data data) {
 		Server_Main* srv = (Server_Main*)obj;
 		srv->UserIdentify(user, data);
 	}
-	void UserIdentify(AsyncServer::SocketUser* user, Data data);
+	void UserIdentify(std::shared_ptr<SocketUser> user, Data data);
 
-	static void JoinMatch_cb(void* obj, AsyncServer::SocketUser* user, Data data) {
+	static void JoinMatch_cb(void* obj, std::shared_ptr<SocketUser> user, Data data) {
 		Server_Main* srv = (Server_Main*)obj;
 		srv->JoinMatch(user, data);
 	}
-	void JoinMatch(AsyncServer::SocketUser* user, Data data);
+	void JoinMatch(std::shared_ptr<SocketUser> user, Data data);
 };

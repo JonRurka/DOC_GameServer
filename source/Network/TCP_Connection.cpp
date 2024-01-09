@@ -1,5 +1,6 @@
 #include "TCP_Connection.h"
 #include "AsyncServer.h"
+#include "SocketUser.h"
 #include "../Logger.h"
 
 void tcp_connection::Send(uint8_t* sending, size_t len)
@@ -42,12 +43,15 @@ void tcp_connection::Start_Read()
 			boost::asio::placeholders::bytes_transferred));
 }
 
-void tcp_connection::Start_Initial_Connect()
+void tcp_connection::Start_Initial_Connect(std::shared_ptr<SocketUser> p_socket_user)
 {
+	Set_Socket_User(p_socket_user);
+
 	boost::asio::async_read(socket_, boost::asio::buffer(length_buff, 2),
 		boost::bind(&tcp_connection::Handle_Initial_Connect, shared_from_this(),
 			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			boost::asio::placeholders::bytes_transferred,
+			p_socket_user));
 }
 
 void tcp_connection::close()
@@ -61,10 +65,14 @@ void tcp_connection::handle_write(const boost::system::error_code&, size_t trans
 	send_buffers.erase(s_id);
 }
 
-void tcp_connection::Handle_Initial_Connect(const boost::system::error_code& err, size_t transfered)
+void tcp_connection::Handle_Initial_Connect(
+	const boost::system::error_code& err, 
+	size_t transfered, 
+	std::shared_ptr<SocketUser> p_socket_user)
 {
-
+	Logger::Log("Handle_Initial_Connect");
 	if (err) {
+		Logger::Log("Initial Connection error: " + err.what());
 		return;
 	}
 
@@ -85,32 +93,32 @@ void tcp_connection::Handle_Initial_Connect(const boost::system::error_code& err
 
 	delete[] message;
 	
-	AsyncServer::SocketUser* socket_usr = (AsyncServer::SocketUser*)socket_user;
-	socket_usr->HandleStartConnect_Finished(successfull);
+	//SocketUser* socket_usr = (SocketUser*)socket_user;
+	p_socket_user->HandleStartConnect_Finished(successfull);
 }
 
 void tcp_connection::handle_read(const boost::system::error_code& err, size_t transfered)
 {
-	AsyncServer::SocketUser* socket_usr = (AsyncServer::SocketUser*)socket_user;
+	//SocketUser* socket_usr = (SocketUser*)socket_user;
 
 	if (err) {
-		Logger::Log("Error!");
+		Logger::Log("TCP Read Error: " + err.what());
 		return;
 	}
 
 	uint16_t size = *((uint16_t*)&length_buff);
 
 	if (size == 0) {
-		Logger::Log("Buffer empty!");
-		AsyncServer::GetInstance()->RemovePlayer(socket_usr);
+		Logger::Log("TCP Buffer empty!");
+		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock());
 		return;
 	}
 
 	uint8_t* message = new uint8_t[size];
 
 	if (!socket_.is_open()) {
-		Logger::Log("Socket closed!");
-		AsyncServer::GetInstance()->RemovePlayer(socket_usr);
+		Logger::Log("TCP Socket closed!");
+		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock());
 		return;
 	}
 
@@ -119,7 +127,7 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 		boost::asio::read(socket_, boost::asio::buffer(message, size));
 	}
 	catch (boost::system::system_error ex) {
-		AsyncServer::GetInstance()->RemovePlayer(socket_usr);
+		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock());
 		return;
 	}
 
@@ -130,5 +138,5 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 	delete[] message;
 
 	
-	socket_usr->ProcessReceiveBuffer(msg, Protocal_Tcp);
+	socket_user.lock()->ProcessReceiveBuffer(msg, Protocal_Tcp);
 }

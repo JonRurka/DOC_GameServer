@@ -1,15 +1,24 @@
 #include "Player.h"
+#include "Server_Main.h"
 
 #include <boost/json.hpp>
 
 using namespace boost;
 
+#define SEND_DEBUG_JUMP 3000
+
 Player::Player()
 {
+	m_sent_last_jump = Server_Main::GetEpoch();
 }
 
 Player::~Player()
 {
+}
+
+std::shared_ptr<Player> Player::Cast_IUser(std::weak_ptr<IUser> user)
+{
+	return std::dynamic_pointer_cast<Player>(user.lock());
 }
 
 bool Player::SetIdentity(std::string json_identity)
@@ -29,14 +38,34 @@ bool Player::SetIdentity(std::string json_identity)
 
 	json::object ident_obj = json_val.as_object();
 
-	m_userName = std::string(ident_obj.at("UserName").as_string());
-	m_distro_userID = std::string(ident_obj.at("User_Distro_ID").as_string());
-	m_UserID = ident_obj.at("UserID").as_int64();
+	m_identity.UserName = std::string(ident_obj.at("UserName").as_string());
+	m_identity.User_Distro_ID = std::string(ident_obj.at("User_Distro_ID").as_string());
+	m_identity.UserID = ident_obj.at("UserID").as_int64();
 
 	//Logger::Log("Is Number: " + std::to_string((int)ident_obj.at("Distributor").is_number()) + ", " + std::to_string((int)ident_obj.at("Distributor").is_int64()));
-	m_distributor = ident_obj.at("Distributor").as_int64();
-
-	m_UserID = 0; // from database.
+	m_identity.Distributor = ident_obj.at("Distributor").as_int64();
 
 	return true;
+}
+
+bool Player::SetIdentity(PlayerIdentity identity)
+{
+	m_identity = identity;
+
+	return true;
+}
+
+void Player::MatchUpdate(float dt)
+{
+	auto now = Server_Main::GetEpoch();
+
+	if ((now - m_sent_last_jump) > SEND_DEBUG_JUMP) {
+
+		if (m_identity.UserID == 0) {
+			Add_Player_Event(OpCodes::Player_Events::Jump);
+		}
+
+		m_sent_last_jump = Server_Main::GetEpoch();
+	}
+
 }

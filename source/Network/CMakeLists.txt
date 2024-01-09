@@ -2,6 +2,7 @@ set(module "Network")
 
 set(${module}_headers
 	AsyncServer.h
+	SocketUser.h
 	TCP_Connection.h
 	TCP_Server.h
 	UDP_Server.h

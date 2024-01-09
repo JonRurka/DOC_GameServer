@@ -4,7 +4,9 @@
 #include "HashHelper.h"
 #include "Network/BufferUtils.h"
 #include "Network/AsyncServer.h"
+#include "Network/SocketUser.h"
 #include "Network/OpCodes.h"
+#include "IUser.h"
 #include "Player.h"
 
 MatchManager* MatchManager::m_instance = nullptr;
@@ -32,7 +34,7 @@ void MatchManager::Update(float dt)
 
 }
 
-bool MatchManager::AddMatchPlayer(Player* player, std::string match_id)
+bool MatchManager::AddMatchPlayer(std::shared_ptr<Player> player, std::string match_id)
 {
 	if (Has_Match_ID(match_id)) {
 		return m_matches_IDs[match_id]->JoinPlayer(player);
@@ -43,7 +45,7 @@ bool MatchManager::AddMatchPlayer(Player* player, std::string match_id)
 	}
 }
 
-void MatchManager::RoutMatchNetCommand(AsyncServer::SocketUser* user, Data data)
+void MatchManager::RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data data)
 {
 	if (!user->Get_Authenticated()) {
 		// send fail
@@ -53,7 +55,7 @@ void MatchManager::RoutMatchNetCommand(AsyncServer::SocketUser* user, Data data)
 	//uint16_t match_short_id = *((uint16_t*)data.Buffer.data());
 	//data.Buffer = BufferUtils::RemoveFront(2, data.Buffer);
 
-	Player* player = (Player*)user->GetUser();
+	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
 
 	if (player != nullptr && player->Get_Active_Match() != nullptr) {
 		player->Get_Active_Match()->SubmitMatchCommand(user, data);
@@ -81,11 +83,23 @@ void MatchManager::CreateMatch(MatchCreationRequest request)
 
 	uint16_t match_short_id = Get_New_Match_Short_ID();
 
-	Match* match = new Match(request.Match_ID, match_short_id);
+	std::shared_ptr<Match> match = std::shared_ptr<Match>(new Match(request.Match_ID, match_short_id));
 	match->Init();
 
 	m_matches[match_short_id] = match;
 	m_matches_IDs[request.Match_ID] = match;
+}
+
+void MatchManager::RemoveMatch(std::string id)
+{
+	if (!Has_Match_ID(id)) {
+		return;
+	}
+
+	uint16_t short_id = m_matches_IDs[id]->ShortID();
+
+	m_matches_IDs.erase(id);
+	m_matches.erase(short_id);
 }
 
 std::vector<MatchManager::MatchCreationRequest> MatchManager::GetNewMatches()

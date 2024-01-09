@@ -2,11 +2,13 @@
 #include "Logger.h"
 #include "CommandExecuter.h"
 #include "Network/AsyncServer.h"
+#include "Network/SocketUser.h"
 #include "HashHelper.h"
 #include "Network/OpCodes.h"
 #include "Network/PlayerAuthenticator.h"
 #include "MatchManager.h"
 #include "Match.h"
+#include "IUser.h"
 #include "Player.h"
 
 #include <boost/json/src.hpp>
@@ -15,14 +17,11 @@ using namespace boost;
  
 Server_Main* Server_Main::m_instance = nullptr;
 
-void Server_Main::UserConnected(void* socket_usr)
+void Server_Main::UserConnected(std::shared_ptr<SocketUser> socket_user)
 {
-	AsyncServer::SocketUser* socket_user = (AsyncServer::SocketUser*)socket_usr;
 
-	Player* player = (Player*)socket_user->GetUser();
-
-	if (socket_user->Has_User() && socket_user->GetUser() != nullptr) {
-		Player* player = (Player*)socket_user->GetUser();
+	if (socket_user->Has_User() && !socket_user->GetUser().expired()) {
+		std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(socket_user->GetUser().lock());
 		Match* player_match = player->Get_Active_Match();
 		if (player_match != nullptr) {
 			player_match->RemovePlayer(player);
@@ -35,25 +34,24 @@ void Server_Main::UserConnected(void* socket_usr)
 	//socket_user->Send(OpCodes::Client::Request_Identity, std::vector<uint8_t>({ 0x01 }));
 }
 
-void Server_Main::UserDisconnected(void* socket_usr)
+void Server_Main::UserDisconnected(std::shared_ptr<SocketUser> socket_user)
 {
-	AsyncServer::SocketUser* socket_user = (AsyncServer::SocketUser*)socket_usr;
+	//SocketUser* socket_user = (SocketUser*)socket_usr;
 
 	Logger::Log("Socket '" + socket_user->SessionToken + "' has disconnected.");
 
-	if (socket_user->GetUser() != nullptr) {
-		Player* player = (Player*)socket_user->GetUser();
+	if (!socket_user->GetUser().expired()) {
+		std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(socket_user->GetUser().lock());
 		std::string username = player->Get_UserName();
 		if (Has_Player(player->Get_UserID())) {
 			m_players.erase(player->Get_UserID());
 		}
-		delete player;
 		Logger::Log("Player '" + username + "' removed.");
 	}
 	
 }
 
-void Server_Main::PlayerAuthenticated(Player* player, bool authorized)
+void Server_Main::PlayerAuthenticated(std::shared_ptr<Player> player, bool authorized)
 {
 	if (authorized) {
 		Logger::Log(player->Get_UserName() + " authenticated successfully!");
@@ -61,7 +59,7 @@ void Server_Main::PlayerAuthenticated(Player* player, bool authorized)
 		if (Has_Player(player->Get_UserID())) {
 			Logger::Log(player->Get_UserName() + " logged on again!");
 			player->Socket_User()->Close(true);
-			delete player;
+			//delete player;
 		}
 		else {
 			player->Socket_User()->Set_Authenticated(true);
@@ -71,7 +69,7 @@ void Server_Main::PlayerAuthenticated(Player* player, bool authorized)
 	else {
 		Logger::Log(player->Get_UserName() + " not authorized.");
 		player->Socket_User()->Close(true);
-		delete player;
+		//delete player;
 	}
 }
 
@@ -184,10 +182,10 @@ void Server_Main::SetCurrentCommand(std::string command)
 	m_curCommand = command;
 }
 
-void Server_Main::UserIdentify(AsyncServer::SocketUser* user, Data data)
+void Server_Main::UserIdentify(std::shared_ptr<SocketUser> user, Data data)
 {
-	Player* player = new Player();
-	user->SetUser((IUser*)player);
+	std::shared_ptr<Player> player = std::make_shared<Player>();
+	user->SetUser(std::static_pointer_cast<IUser>(player));
 
 	bool is_identified = player->SetIdentity(HashHelper::BytesToString(data.Buffer));
 
@@ -196,7 +194,7 @@ void Server_Main::UserIdentify(AsyncServer::SocketUser* user, Data data)
 	}
 	else {
 		user->Close(true);
-		delete player;
+		//delete player;
 	}
 
 	uint8_t res = is_identified ? 0x01 : 0x00;
@@ -204,7 +202,7 @@ void Server_Main::UserIdentify(AsyncServer::SocketUser* user, Data data)
 	user->Send(OpCodes::Client::Identify_Result, std::vector<uint8_t>({ res }));
 }
 
-void Server_Main::JoinMatch(AsyncServer::SocketUser* user, Data data)
+void Server_Main::JoinMatch(std::shared_ptr<SocketUser> user, Data data)
 {
 	if (!user->Get_Authenticated()) {
 		// send fail
@@ -212,7 +210,7 @@ void Server_Main::JoinMatch(AsyncServer::SocketUser* user, Data data)
 		return;
 	}
 
-	Player* player = (Player*)user->GetUser();
+	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
 
 	std::string json_string = HashHelper::BytesToString(data.Buffer);
 
@@ -234,13 +232,23 @@ void Server_Main::JoinMatch(AsyncServer::SocketUser* user, Data data)
 	json::object ident_obj = json_val.as_object();
 	std::string match_id = std::string(ident_obj.at("Match_ID").as_string());
 
-	
+	Player::PlayerIdentity fake_identity;
+	fake_identity.UserName = "Fake_User";
+	fake_identity.UserID = 0;
+	fake_identity.Distributor = 0;
+	fake_identity.User_Distro_ID = "fake_distro_id";
+	//Player* fake_player = new Player();
+	//fake_player->SetIdentity(fake_identity);
+	//fake_player->Set_Location(glm::vec3(0, 0, 1.10));
+	//fake_player->Set_Rotation(glm::quat());
+	//m_match_manager->AddMatchPlayer(fake_player, match_id);
 
 	bool join_res = m_match_manager->AddMatchPlayer(player, match_id);
+	
 
 	bool res = 0x00;
 	uint16_t match_short_id = 0;
-	Match* match = m_match_manager->GetMatchFromID(match_id);
+	std::shared_ptr<Match> match = m_match_manager->GetMatchFromID(match_id);
 	if (match != nullptr && join_res) {
 		res = join_res;
 		match_short_id = match->ShortID();
