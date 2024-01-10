@@ -6,6 +6,9 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 
+namespace
+{
+
 static struct termios old, current;
 
 int kbhit() {
@@ -68,6 +71,8 @@ char getch(void)
 char getche(void)
 {
     return getch_(1);
+}
+
 }
 
 #endif
