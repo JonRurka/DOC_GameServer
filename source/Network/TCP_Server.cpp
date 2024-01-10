@@ -2,6 +2,7 @@
 #include "AsyncServer.h"
 #include "SocketUser.h"
 #include "../Logger.h"
+#include "../Server_Main.h"
 
 void tcp_server::start_accept()
 {
@@ -33,11 +34,21 @@ void tcp_server::handle_accept(tcp_connection::pointer new_connection, const boo
 		Logger::Log("New connection failed.");
 	}
 
-	
+	Server_Main::SetMemoryUsageForThread("tcp_service");
 }
 
 void tcp_server::close()
 {
+	m_run = false;
 	io_service_.stop();
 	m_thread.join();
+}
+
+void tcp_server::RunService(tcp_server* svr)
+{
+	Logger::Log("Begin TCP service Run");
+	while (svr->m_run) {
+		svr->io_service_.run();
+	}
+	Logger::Log("End TCP service Run");
 }

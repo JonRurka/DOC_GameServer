@@ -125,6 +125,8 @@ void Server_Main::Init()
 
 	m_match_manager = new MatchManager();
 
+	m_last_memory_print_time = GetEpoch();
+
 	Logger::Log("Server Initialized Successfully!");
 }
 
@@ -162,6 +164,23 @@ void Server_Main::Update(double dt)
 		m_executedCommand = "";
 	}
 
+	//Logger::Log("Memory Used: " + GetMemoryUsage());
+
+	SetMemoryUsageForThread("main", GetMemoryUsage());
+
+	auto now = GetEpoch();
+
+	if ((now - m_last_memory_print_time) > 1000){
+		m_memory_lock.lock();
+		for (auto& [key, val] : m_memory_usage) {
+			//Logger::Log("Thread " + key + ": " + std::to_string((val / 1000.0)) + "KB");
+		}
+		m_memory_lock.unlock();
+
+		m_last_memory_print_time = now;
+	}
+
+
 	Logger::Update();
 
 }
@@ -175,6 +194,21 @@ void Server_Main::Stop()
 
 void Server_Main::Dispose()
 {
+}
+
+uint64_t Server_Main::GetMemoryUsage()
+{
+	MEMORYSTATUSEX memInfo;
+	memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+	GlobalMemoryStatusEx(&memInfo);
+
+	PROCESS_MEMORY_COUNTERS_EX pmc;
+	GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
+
+	uint64_t physMemUsed = memInfo.ullTotalPhys - memInfo.ullAvailPhys;
+	uint64_t physMemUsedByMe = pmc.WorkingSetSize;
+
+	return physMemUsedByMe;
 }
 
 void Server_Main::SetCurrentCommand(std::string command)

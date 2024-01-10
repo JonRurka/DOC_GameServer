@@ -80,6 +80,7 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 
 	async_server->Receive_UDP(msg, endpoint.address());
 
+	Server_Main::SetMemoryUsageForThread("udp_service");
 }
 
 void udp_server::Send(udp::endpoint remote_endpoint, uint8_t* sending, size_t len)
@@ -128,6 +129,8 @@ void udp_server::handle_send(uint64_t s_id)
 	delete[] send_buffers[s_id];
 	send_buffers.erase(s_id);
 	m_send_lock.unlock();
+
+	Server_Main::SetMemoryUsageForThread("udp_service");
 }
 
 void udp_server::RunService(udp_server* svr)

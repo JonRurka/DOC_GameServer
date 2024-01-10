@@ -49,13 +49,13 @@ public:
 	
 	uint16_t Get_New_UDP_ID();
 
-	void Add_UDP_ID(uint16_t id, std::shared_ptr<SocketUser> user) {
+	void Add_UDP_ID(uint16_t id, std::shared_ptr<SocketUser>& user) {
 		m_udp_id_map[id] = user;
 	}
 
-	void AddPlayer(std::shared_ptr<SocketUser> user);
+	void AddPlayer(std::shared_ptr<SocketUser>& user);
 	
-	void RemovePlayer(std::shared_ptr<SocketUser> user);
+	void RemovePlayer(std::shared_ptr<SocketUser>& user);
 
 	bool HasPlayerSession(std::string session_key);
 
@@ -86,7 +86,7 @@ private:
 
 	struct ThreadCommand {
 		Data data;
-		std::weak_ptr<SocketUser> user;
+		std::shared_ptr<SocketUser> user;
 	};
 
 	static AsyncServer* m_instance;
@@ -108,10 +108,20 @@ private:
 	std::unordered_map<uint8_t, NetCommand> m_commands;
 	std::unordered_map<std::string, std::shared_ptr<SocketUser>> m_socket_users;
 	std::unordered_map<uint16_t, std::shared_ptr<SocketUser>> m_udp_id_map;
+	std::vector<std::shared_ptr<SocketUser>> m_Socket_user_list;
 	std::recursive_mutex m_user_mtx;
+
+	std::queue<std::shared_ptr<SocketUser>> m_queue_user_add;
+	std::queue<std::shared_ptr<SocketUser>> m_queue_user_remove;
 
 	std::queue<ThreadCommand> m_main_command_queue;
 	std::queue<ThreadCommand> m_async_command_queue;
+
+	void PopulateUserList();
+
+	void DoAddPlayer(std::shared_ptr<SocketUser> user);
+
+	void DoRemovePlayer(std::shared_ptr<SocketUser> user);
 
 	void DoProcess(std::shared_ptr<SocketUser> socket_user, Data data);
 

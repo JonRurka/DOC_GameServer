@@ -15,6 +15,7 @@ private:
 	AsyncServer* async_server;
 	std::thread m_thread;
 	int m_port;
+	bool m_run;
 
 public:
 
@@ -25,6 +26,7 @@ public:
 		m_port = port;
 		async_server = server_inst;
 		start_accept();
+		m_run = true;
 		m_thread = std::thread(RunService, this);
 	}
 
@@ -36,8 +38,6 @@ public:
 	void close();
 
 private:
-	static void RunService(tcp_server* svr) {
-		svr->io_service_.run();
-	}
+	static void RunService(tcp_server* svr);
 };
 

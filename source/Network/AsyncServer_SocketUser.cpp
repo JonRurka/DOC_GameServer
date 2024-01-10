@@ -67,15 +67,16 @@ void SocketUser::HandleStartConnect_Finished(bool successfull)
 
 		Logger::Log("UDP ID: " + std::to_string(udp_id));
 
-		Send(OpCodes::Client::System_Reserved, BufferUtils::Add({ {0x01, result}, {udp_buf[0], udp_buf[1]}}), Protocal_Tcp);
+		Send(OpCodes::Client::System_Reserved, BufferUtils::Add({0x01, result}, {udp_buf[0], udp_buf[1]}), Protocal_Tcp);
 
 		_server->AddPlayer(shared_from_this());
 
 		// handle messages
+
 		tcp_connection_client->Start_Read();
 	}
 	else {
-		Send(OpCodes::Client::System_Reserved, BufferUtils::Add({ {0x01, result}, {0x00, 0x00} }), Protocal_Tcp);
+		Send(OpCodes::Client::System_Reserved, BufferUtils::Add({0x01, result}, {0x00, 0x00}), Protocal_Tcp);
 
 		//user.Send(0xff, BufferUtils.Add(new byte[]{ 0x01, result }, udpidBuff));
 		// dipose socket user

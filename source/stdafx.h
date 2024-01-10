@@ -56,6 +56,7 @@
 #define WINDOWS_PLATFROM
 #include <windows.h>
 #include <conio.h>
+#include <psapi.h>
 #pragma comment(lib, "dxgi")
 #pragma comment(lib,"d3d11.lib")
 #define WIN32_LEAN_AND_MEAN

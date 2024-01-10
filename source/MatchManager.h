@@ -45,8 +45,7 @@ public:
 	}
 
 	static void RoutMatchNetCommand_cb(void* obj, std::shared_ptr<SocketUser> user, Data data) {
-		MatchManager* mnger = (MatchManager*)obj;
-		mnger->RoutMatchNetCommand(user, data);
+		m_instance->RoutMatchNetCommand(user, data);
 	}
 
 	void RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data data);

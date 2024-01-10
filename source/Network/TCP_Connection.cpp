@@ -2,6 +2,7 @@
 #include "AsyncServer.h"
 #include "SocketUser.h"
 #include "../Logger.h"
+#include "../Server_Main.h"
 
 void tcp_connection::Send(uint8_t* sending, size_t len)
 {
@@ -63,6 +64,8 @@ void tcp_connection::handle_write(const boost::system::error_code&, size_t trans
 {
 	delete[] send_buffers[s_id];
 	send_buffers.erase(s_id);
+
+	Server_Main::SetMemoryUsageForThread("tcp_service");
 }
 
 void tcp_connection::Handle_Initial_Connect(
@@ -95,6 +98,8 @@ void tcp_connection::Handle_Initial_Connect(
 	
 	//SocketUser* socket_usr = (SocketUser*)socket_user;
 	p_socket_user->HandleStartConnect_Finished(successfull);
+
+	Server_Main::SetMemoryUsageForThread("tcp_service");
 }
 
 void tcp_connection::handle_read(const boost::system::error_code& err, size_t transfered)
@@ -145,4 +150,6 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 
 	
 	socket_user.lock()->ProcessReceiveBuffer(msg, Protocal_Tcp);
+
+	Server_Main::SetMemoryUsageForThread("tcp_service");
 }

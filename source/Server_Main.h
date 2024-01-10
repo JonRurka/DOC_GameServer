@@ -35,6 +35,10 @@ private:
 
 	std::unordered_map<uint32_t, std::shared_ptr<Player>> m_players;
 
+	std::map<std::string, uint64_t> m_memory_usage;
+	std::mutex m_memory_lock;
+	uint64_t m_last_memory_print_time;
+
 public:
 
 	static Server_Main* Instance() {
@@ -76,6 +80,18 @@ public:
 		auto now = std::chrono::system_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
 		return duration.count();
+	}
+
+	static uint64_t GetMemoryUsage();
+
+	static void SetMemoryUsageForThread(std::string name) {
+		SetMemoryUsageForThread(name, GetMemoryUsage());
+	}
+
+	static void SetMemoryUsageForThread(std::string name, uint64_t usage) {
+		m_instance->m_memory_lock.lock();
+		m_instance->m_memory_usage[name] = usage;
+		m_instance->m_memory_lock.unlock();
 	}
 
 	void SetCurrentCommand(std::string command);

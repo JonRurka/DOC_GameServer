@@ -182,6 +182,8 @@ void Match::AsynUpdate()
 	UpdatePlayers(dt);
 	SendOrientationUpdates();
 	SendPlayerEvents();
+
+	Server_Main::SetMemoryUsageForThread("match_" + m_ID);
 }
 
 void Match::UpdatePlayers(float dt)
@@ -280,10 +282,11 @@ void Match::ProcessNetCommands()
 void Match::ExecuteNetCommand(std::shared_ptr<SocketUser> user, Data data)
 {
 	
-
 	if (data.Buffer.size() > 0) {
 		OpCodes::Server_Match sub_command = (OpCodes::Server_Match)data.Buffer[0];
 		data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
+
+		//Logger::Log("Received match command: " + std::to_string((uint8_t)sub_command));
 
 		switch (sub_command) {
 		case OpCodes::Server_Match::Debug_Start:

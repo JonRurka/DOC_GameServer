@@ -30,16 +30,21 @@ AsyncServer::AsyncServer(Server_Main* server)
 
 void AsyncServer::Update(float dt)
 {
-    m_user_mtx.lock();
-    std::vector<std::shared_ptr<SocketUser>> tmp_users;
+    while (!m_queue_user_add.empty()) {
+        std::shared_ptr<SocketUser>& user = m_queue_user_add.front();
+        m_queue_user_add.pop();
 
-    for (const auto& user : m_socket_users) {
-        // TODO: Fix crash
-        tmp_users.push_back(user.second);
+        DoAddPlayer(user);
     }
-    m_user_mtx.unlock();
 
-    for (auto& usr : tmp_users) {
+    while (!m_queue_user_remove.empty()) {
+        std::shared_ptr<SocketUser>& user = m_queue_user_remove.front();
+        m_queue_user_remove.pop();
+
+        DoRemovePlayer(user);
+    }
+
+    for (auto& usr : m_Socket_user_list) {
         usr->Update(dt);
     }
     
@@ -48,9 +53,7 @@ void AsyncServer::Update(float dt)
         ThreadCommand thr_command = m_main_command_queue.front();
         m_main_command_queue.pop();
 
-        if (!thr_command.user.expired()) {
-            DoProcess(thr_command.user.lock(), thr_command.data);
-        }
+        DoProcess(thr_command.user, thr_command.data);
     }
 }
 
@@ -67,10 +70,10 @@ void AsyncServer::Process_Async(AsyncServer* svr) {
             ThreadCommand thr_command = svr->m_async_command_queue.front();
             svr->m_async_command_queue.pop();
 
-            if (!thr_command.user.expired()) {
-                svr->DoProcess(thr_command.user.lock(), thr_command.data);
-            }
+            svr->DoProcess(thr_command.user, thr_command.data);
         }
+
+        Server_Main::SetMemoryUsageForThread("async_server_process");
     }
 }
 
@@ -85,21 +88,29 @@ void AsyncServer::AddCommand(OpCodes::Server cmd, CommandActionPtr callback, voi
     }
 }
 
-void AsyncServer::AddPlayer(std::shared_ptr<SocketUser> user)
+void AsyncServer::AddPlayer(std::shared_ptr<SocketUser>& user)
 {
+    m_queue_user_add.push(user);
+}
+
+void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser>& user)
+{
+    m_queue_user_remove.push(user);
+}
+
+void AsyncServer::DoAddPlayer(std::shared_ptr<SocketUser> user) {
     if (!HasPlayerSession(user->SessionToken)) {
         m_user_mtx.lock();
         m_socket_users[user->SessionToken] = user;
         m_server->UserConnected(user);
         m_user_mtx.unlock();
+        PopulateUserList();
     }
 }
 
-void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser> user)
-{
-    
+void AsyncServer::DoRemovePlayer(std::shared_ptr<SocketUser> user) {
     std::string session_token = user->SessionToken;
-    uint16_t udp_id =  user->Get_UDP_ID();
+    uint16_t udp_id = user->Get_UDP_ID();
     if (HasPlayerSession(session_token)) {
         m_user_mtx.lock();
         m_socket_users.erase(session_token);
@@ -107,10 +118,9 @@ void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser> user)
         m_user_mtx.unlock();
         m_server->UserDisconnected(user);
         user->Close(false);
+        PopulateUserList();
         //delete user;
-        
     }
-    
 }
 
 bool AsyncServer::HasPlayerSession(std::string session_key)
@@ -262,17 +272,31 @@ void AsyncServer::Process(std::shared_ptr<SocketUser> socket_user, Data data)
         ThreadCommand thread_cmd;
         thread_cmd.data = data;
         thread_cmd.user = socket_user;
-
+        
         if (command_obj.Is_Async && m_run_async_commands) {
+            //Logger::Log("Received async command: " + std::to_string(data.command));
             m_async_command_queue.push(thread_cmd);
         }
         else {
+            //Logger::Log("Received main command: " + std::to_string(data.command));
             m_main_command_queue.push(thread_cmd);
         }
     }
     else {
         Logger::Log("User submitted invalid command");
     }
+}
+
+void AsyncServer::PopulateUserList()
+{
+    m_user_mtx.lock();
+    m_Socket_user_list.clear();
+    m_Socket_user_list.reserve(m_socket_users.size());
+    for (const auto& user : m_socket_users) {
+        // TODO: Fix crash
+        m_Socket_user_list.emplace_back(user.second);
+    }
+    m_user_mtx.unlock();
 }
 
 uint16_t AsyncServer::Get_New_UDP_ID()
@@ -292,7 +316,6 @@ void AsyncServer::DoProcess(std::shared_ptr<SocketUser> socket_user, Data data) 
 void AsyncServer::System_Cmd(std::shared_ptr<SocketUser> socket_user, Data data)
 {
     uint8_t sub_command = data.Buffer[0];
-    //UE_LOG(GameClient_Log, Display, TEXT("Received sub command %d"), sub_command);
     //Logger::Log("Sub Command: " + std::to_string(sub_command));
 
     data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
@@ -304,7 +327,7 @@ void AsyncServer::System_Cmd(std::shared_ptr<SocketUser> socket_user, Data data)
     case 0x03: // ping
         socket_user->ResetPingCounter();
         socket_user->Send(OpCodes::Client::System_Reserved, std::vector<uint8_t>({ 0x03, 0x01 }), Protocal_Tcp);
-        //Logger::Log("Received ping");
+        //Logger::Log("Received ping for client: " + socket_user->SessionToken);
         break;
     case 0x04: // set UDP client port
         uint16_t port = *((uint16_t*)data.Buffer.data());

@@ -47,8 +47,10 @@ bool MatchManager::AddMatchPlayer(std::shared_ptr<Player> player, std::string ma
 
 void MatchManager::RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data data)
 {
+	//Logger::Log("MatchCommandRouter: Received match command");
 	if (!user->Get_Authenticated()) {
 		// send fail
+		Logger::Log("Match command route failed: user not authenticated!");
 		return;
 	}
 
