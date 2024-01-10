@@ -140,7 +140,7 @@ void Server_Main::Loop()
 		double dt = curTime - lastTime;
 		lastTime = curTime;
 
-		Sleep(1);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		Update(dt);
 		frameCounter++;
 	}
