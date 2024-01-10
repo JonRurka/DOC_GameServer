@@ -52,7 +52,7 @@ private:
 		sent = 0;
 	}
 
-	void handle_write(const boost::system::error_code&, size_t transfered, uint64_t s_id);
+	void handle_write(const boost::system::error_code&, size_t transfered, uint8_t* buffer);
 
 	void Handle_Initial_Connect(
 		const boost::system::error_code&, 

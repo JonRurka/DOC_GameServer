@@ -63,7 +63,7 @@ bool Player::SetIdentity(PlayerIdentity identity)
 
 void Player::MatchUpdate(float dt)
 {
-	auto now = Server_Main::GetEpoch();
+	/*auto now = Server_Main::GetEpoch();
 
 	if ((now - m_sent_last_jump) > SEND_DEBUG_JUMP) {
 
@@ -72,6 +72,6 @@ void Player::MatchUpdate(float dt)
 		}
 
 		m_sent_last_jump = Server_Main::GetEpoch();
-	}
+	}*/
 
 }

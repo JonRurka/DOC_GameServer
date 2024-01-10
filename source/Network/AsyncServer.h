@@ -49,13 +49,13 @@ public:
 	
 	uint16_t Get_New_UDP_ID();
 
-	void Add_UDP_ID(uint16_t id, std::shared_ptr<SocketUser>& user) {
+	void Add_UDP_ID(uint16_t id, std::shared_ptr<SocketUser> user) {
 		m_udp_id_map[id] = user;
 	}
 
-	void AddPlayer(std::shared_ptr<SocketUser>& user);
+	void AddPlayer(std::shared_ptr<SocketUser> user);
 	
-	void RemovePlayer(std::shared_ptr<SocketUser>& user);
+	void RemovePlayer(std::shared_ptr<SocketUser> user);
 
 	bool HasPlayerSession(std::string session_key);
 

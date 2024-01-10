@@ -35,31 +35,47 @@ public:
 		return Add(id_v, data);
 	}
 
-	static std::vector<uint8_t> RemoveFront(Remove numToRemove, std::vector<uint8_t> origin)
+	static std::vector<uint8_t> RemoveFront(Remove numToRemove, std::vector<uint8_t>& origin)
 	{
 		std::vector<uint8_t> res;
 		if ((int)numToRemove > origin.size())
 		{
-			return res;
+			return origin;
 			//throw new Exception(string.Format("RemoveFront: received remove length ({0}) longer than buffer: {1}", (int)numToRemove, BitConverter.ToString(origin)));
 		}
 
-		res.assign(origin.begin() + numToRemove, origin.end());
-		return res;
+		/*res.assign(origin.begin() + numToRemove, origin.end());
+		return res;*/
+
+		uint8_t* data = origin.data();
+
+		return std::vector<uint8_t>(data + numToRemove, data + origin.size());
 	}
 
 	static std::vector<uint8_t> AddFirst(uint8_t byteToAdd, std::vector<uint8_t> origin)
 	{
-		origin.insert(origin.begin(), byteToAdd);
-		return origin;
+		std::vector<uint8_t> add_f;
+		add_f.push_back(byteToAdd);
+
+		return Add(add_f, origin);
+
+		//origin.insert(origin.begin(), byteToAdd);
+		//return origin;
 	}
 
 	static std::vector<uint8_t> Add(std::vector<uint8_t> buffer_1, std::vector<uint8_t> buffer_2) {
-		
-		std::vector<std::vector<uint8_t>> buffers;
-		buffers.push_back(buffer_1);
-		buffers.push_back(buffer_2);
-		return Add(buffers);
+		int full_size = buffer_1.size() + buffer_2.size();
+		uint8_t* res_buf = new uint8_t[full_size];
+		memcpy(res_buf, buffer_1.data(), buffer_1.size());
+		memcpy(&res_buf[buffer_1.size()], buffer_2.data(), buffer_2.size());
+		std::vector<uint8_t> res(res_buf, res_buf + full_size);
+		delete[] res_buf;
+		return res;
+
+		//std::vector<std::vector<uint8_t>> buffers;
+		//buffers.push_back(buffer_1);
+		//buffers.push_back(buffer_2);
+		//return Add(buffers);
 	}
 
 	static std::vector<uint8_t> Add(std::vector<std::vector<uint8_t>>& buffers) {

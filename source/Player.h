@@ -3,6 +3,9 @@
 #include "stdafx.h"
 #include "IUser.h"
 
+
+#define PLAYER_ORIENTATION_SIZE (7 * sizeof(float))
+
 class Match;
 
 class Player : public IUser {
@@ -103,7 +106,7 @@ public:
 		m_active_events.push(p_event);
 	}
 
-	std::vector<uint8_t> Serialize_Orientation() {
+	std::vector<uint8_t> Serialize_Orientation(uint8_t* out_buff) {
 
 		float rot_buf[7] = {
 			m_location.x,
@@ -115,8 +118,19 @@ public:
 			m_rotation.w
 		};
 
-		std::vector<uint8_t> or_arr(((uint8_t*)rot_buf), ((uint8_t*)rot_buf) + (7 * sizeof(float)));
-		return or_arr;
+		memcpy((void*)out_buff, (void*)rot_buf, OrientationSize());
+
+		return std::vector<uint8_t>();
+
+		/*int size = OrientationSize();
+		uint8_t* rot_buff_8 = (uint8_t*)rot_buf;
+
+		std::vector<uint8_t> or_arr(rot_buff_8, rot_buff_8 + size);
+		return or_arr;*/
+	}
+
+	static const int OrientationSize() {
+		return PLAYER_ORIENTATION_SIZE;
 	}
 
 	int SerializePlayerEvents(std::vector<uint8_t>& events_buff) {

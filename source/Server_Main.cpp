@@ -171,11 +171,14 @@ void Server_Main::Update(double dt)
 	auto now = GetEpoch();
 
 	if ((now - m_last_memory_print_time) > 1000){
-		m_memory_lock.lock();
+		/*m_memory_lock.lock();
 		for (auto& [key, val] : m_memory_usage) {
 			//Logger::Log("Thread " + key + ": " + std::to_string((val / 1000.0)) + "KB");
 		}
-		m_memory_lock.unlock();
+		m_memory_lock.unlock();*/
+
+
+
 
 		m_last_memory_print_time = now;
 	}

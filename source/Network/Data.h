@@ -9,8 +9,8 @@ typedef unsigned int Protocal;
 
 class Data {
 public:
-    Protocal Type;
-    uint8_t command;
+    Protocal Type = 0;
+    uint8_t command = 0;
     std::vector<uint8_t> Buffer;
     std::string Input;
 
@@ -21,5 +21,7 @@ public:
         Input = std::string(Buffer.begin(), Buffer.end());
     }
 
-    Data(){}
+    Data(){
+
+    }
 };

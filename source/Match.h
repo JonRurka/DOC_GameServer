@@ -52,7 +52,7 @@ private:
 
 	struct NetCommand {
 	public:
-		std::weak_ptr<SocketUser> user;
+		std::shared_ptr<SocketUser> user;
 		Data data;
 	};
 
@@ -69,6 +69,9 @@ private:
 	MatchState m_match_state;
 
 	uint64_t m_last_orientation_update;
+
+	uint8_t* m_orientation_send_buffer = nullptr;
+	int m_orientation_send_buffer_size = 0;
 
 	bool m_running;
 

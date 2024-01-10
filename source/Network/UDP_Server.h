@@ -45,7 +45,7 @@ private:
 	
 	void handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, std::shared_ptr<SocketUser> socket_user);
 
-	void handle_send(uint64_t s_id);
+	void handle_send(uint8_t* buffer);
 
 	static void RunService(udp_server* svr);
 
@@ -53,7 +53,7 @@ private:
 	//udp::socket send_socket_;
 	udp::socket recv_socket_;
 	AsyncServer* async_server;
-	std::map<uint64_t, uint8_t*> send_buffers;
+	std::map<uint64_t, std::unique_ptr<uint8_t>> send_buffers;
 	int numSends = 0;
 	uint8_t recv_buffer_[MAX_UDP_SIZE];
 	uint8_t length_buff[2];

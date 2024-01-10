@@ -82,6 +82,11 @@ void Match::StartMatch()
 		return;
 	}
 
+	uint8_t num_orientations = m_players.size();
+	int player_entry_size = (Player::OrientationSize() + 1);
+	m_orientation_send_buffer_size = (player_entry_size * num_orientations) + 1;
+	m_orientation_send_buffer = new uint8_t[m_orientation_send_buffer_size];
+
 	json::object obj;
 
 	obj["seed"] = 0;
@@ -128,11 +133,7 @@ void Match::EndMatch()
 void Match::BroadcastCommand(OpCodes::Client cmd, std::vector<uint8_t> data, Protocal type)
 {
 	for (auto& pair : m_players) {
-		if (pair.second != nullptr) {
-			// could crash if player removed at wrong time.
-			//Logger::Log("Sent match start command");
-			pair.second->Send(cmd, data, type);
-		}
+		pair.second->Send(cmd, data, type);
 	}
 }
 
@@ -190,10 +191,6 @@ void Match::UpdatePlayers(float dt)
 {
 	m_player_mtx.lock();
 	for (auto& pair : m_players) {
-		if (pair.second == nullptr) {
-			continue;
-		}
-
 		pair.second->MatchUpdate(dt);
 	}
 	m_player_mtx.unlock();
@@ -209,9 +206,12 @@ void Match::SendOrientationUpdates()
 
 	if ((now - m_last_orientation_update) > ORIENTATION_SEND_RATE) {
 
-		std::vector<uint8_t> send_buff;
+		uint8_t num_orientations = m_players.size();
 
-		uint8_t num_orientations = 0;
+		/*std::vector<uint8_t> send_buff;
+		//send_buff.reserve((Player::OrientationSize() + 1) * num_orientations + 1);
+
+		
 		m_player_mtx.lock();
 		for (auto& pair : m_players) {
 
@@ -221,13 +221,32 @@ void Match::SendOrientationUpdates()
 			player_orient_buff = BufferUtils::AddFirst(player->Get_MatchInstanceID(), player_orient_buff);
 
 			send_buff = BufferUtils::Add(send_buff, player_orient_buff);
-
-			num_orientations++;
 		}
 		m_player_mtx.unlock();
-		send_buff = BufferUtils::AddFirst(num_orientations, send_buff);
+		send_buff = BufferUtils::AddFirst(num_orientations, send_buff);*/
 
-		BroadcastCommand(OpCodes::Client::Update_Orientations, send_buff, Protocal_Udp);
+		int player_entry_size = (Player::OrientationSize() + 1);
+
+		m_orientation_send_buffer[0] = num_orientations;
+
+		m_player_mtx.lock();
+		int p_index = 0;
+		for (auto& pair : m_players) {
+			Player* player = pair.second.get();
+
+			int buffer_index = (p_index * player_entry_size) + 1;
+
+			m_orientation_send_buffer[buffer_index] = player->Get_MatchInstanceID();
+			player->Serialize_Orientation(&m_orientation_send_buffer[buffer_index + 1]);
+			
+			p_index++;
+		}
+		m_player_mtx.unlock();
+
+		std::vector<uint8_t> send_buff(m_orientation_send_buffer, m_orientation_send_buffer + m_orientation_send_buffer_size);
+		
+
+		BroadcastCommand(OpCodes::Client::Update_Orientations, send_buff); //Protocal_Udp
 
 
 		m_last_orientation_update = Server_Main::GetEpoch();
@@ -247,10 +266,6 @@ void Match::SendPlayerEvents()
 	m_player_mtx.lock();
 	for (auto& pair : m_players) {
 		std::shared_ptr<Player> player = pair.second;
-
-		if (player == nullptr) {
-			continue;
-		}
 
 		num_events += player->SerializePlayerEvents(send_buff);
 	}
@@ -273,9 +288,8 @@ void Match::ProcessNetCommands()
 		NetCommand data = m_command_queue.front();
 		m_command_queue.pop();
 
-		if (!data.user.expired()) {
-			ExecuteNetCommand(data.user.lock(), data.data);
-		}
+		ExecuteNetCommand(data.user, data.data);
+		
 	}
 }
 
@@ -323,6 +337,8 @@ void Match::StartMatch_NetCmd(std::shared_ptr<SocketUser> user, Data data)
 
 void Match::UpdateOrientation_NetCmd(std::shared_ptr<SocketUser> user, Data data)
 {
+	//return;
+
 	float* loc_buff = (float*)data.Buffer.data();
 	//float* rot_buff = &((float*)data.Buffer.data())[3];
 

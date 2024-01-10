@@ -44,11 +44,16 @@ void AsyncServer::Update(float dt)
         DoRemovePlayer(user);
     }
 
+    std::string use_count_str;
     for (auto& usr : m_Socket_user_list) {
         usr->Update(dt);
-    }
-    
 
+        use_count_str += std::to_string(usr.use_count()) + ", ";
+    }
+
+    //if (m_Socket_user_list.size() > 0)
+    //    Logger::Log("User use counts: " + use_count_str);
+    
     while (!m_main_command_queue.empty()) {
         ThreadCommand thr_command = m_main_command_queue.front();
         m_main_command_queue.pop();
@@ -88,12 +93,12 @@ void AsyncServer::AddCommand(OpCodes::Server cmd, CommandActionPtr callback, voi
     }
 }
 
-void AsyncServer::AddPlayer(std::shared_ptr<SocketUser>& user)
+void AsyncServer::AddPlayer(std::shared_ptr<SocketUser> user)
 {
     m_queue_user_add.push(user);
 }
 
-void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser>& user)
+void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser> user)
 {
     m_queue_user_remove.push(user);
 }
@@ -293,7 +298,6 @@ void AsyncServer::PopulateUserList()
     m_Socket_user_list.clear();
     m_Socket_user_list.reserve(m_socket_users.size());
     for (const auto& user : m_socket_users) {
-        // TODO: Fix crash
         m_Socket_user_list.emplace_back(user.second);
     }
     m_user_mtx.unlock();

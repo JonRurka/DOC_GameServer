@@ -24,15 +24,16 @@ void tcp_connection::Send(std::vector<uint8_t> sending)
 	sending = BufferUtils::AddLength(sending);
 
 	//boost::shared_ptr<std::vector<uint8_t>> message(new std::vector(sending));
-	uint64_t id = numSends++;
-	send_buffers[id] = new uint8_t[sending.size()];
-	memcpy(send_buffers[id], sending.data(), sending.size());
+	//uint64_t id = numSends++;
+	uint8_t* buffer = new uint8_t[sending.size()];
+	//send_buffers[id] = new uint8_t[sending.size()];
+	memcpy(buffer, sending.data(), sending.size());
 
-	boost::asio::async_write(socket_, boost::asio::buffer(send_buffers[id], sending.size()),
+	boost::asio::async_write(socket_, boost::asio::buffer(buffer, sending.size()),
 		boost::bind(&tcp_connection::handle_write, shared_from_this(),
 			boost::asio::placeholders::error,
 			boost::asio::placeholders::bytes_transferred, 
-			id));
+			buffer));
 }
 
 void tcp_connection::Start_Read()
@@ -60,10 +61,10 @@ void tcp_connection::close()
 	socket_.close();
 }
 
-void tcp_connection::handle_write(const boost::system::error_code&, size_t transfered, uint64_t s_id)
+void tcp_connection::handle_write(const boost::system::error_code&, size_t transfered, uint8_t* buffer)
 {
-	delete[] send_buffers[s_id];
-	send_buffers.erase(s_id);
+	delete[] buffer;
+	//send_buffers.erase(s_id);
 
 	Server_Main::SetMemoryUsageForThread("tcp_service");
 }

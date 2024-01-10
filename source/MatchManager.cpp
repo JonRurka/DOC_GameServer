@@ -57,7 +57,8 @@ void MatchManager::RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data da
 	//uint16_t match_short_id = *((uint16_t*)data.Buffer.data());
 	//data.Buffer = BufferUtils::RemoveFront(2, data.Buffer);
 
-	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
+	
+	Player* player = Player::Cast_IUser(user->GetUser()).get();
 
 	if (player != nullptr && player->Get_Active_Match() != nullptr) {
 		player->Get_Active_Match()->SubmitMatchCommand(user, data);
