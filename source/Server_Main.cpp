@@ -82,14 +82,14 @@ Server_Main::Server_Main(char* args)
 	m_curCommand = "";
 	m_executedCommand = "";
 
-	char pBuf[256];
-#ifdef WINDOWS_PLATFROM
+
+	char pBuf[256]{};
 	size_t len = sizeof(pBuf);
+#ifdef WINDOWS_PLATFROM
 	int bytes = GetModuleFileName(NULL, pBuf, len);
 #else // linux
-	int bytes = MIN(readlink("/proc/self/exe", pBuf, len), len - 1);
-	if (bytes >= 0)
-		pBuf[bytes] = '\0';
+	readlink("/proc/self/exe", pBuf, len);
+
 #endif
 
 	m_app_dir = pBuf;
@@ -201,7 +201,7 @@ void Server_Main::Dispose()
 
 uint64_t Server_Main::GetMemoryUsage()
 {
-	MEMORYSTATUSEX memInfo;
+	/*MEMORYSTATUSEX memInfo;
 	memInfo.dwLength = sizeof(MEMORYSTATUSEX);
 	GlobalMemoryStatusEx(&memInfo);
 
@@ -209,9 +209,9 @@ uint64_t Server_Main::GetMemoryUsage()
 	GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
 
 	uint64_t physMemUsed = memInfo.ullTotalPhys - memInfo.ullAvailPhys;
-	uint64_t physMemUsedByMe = pmc.WorkingSetSize;
+	uint64_t physMemUsedByMe = pmc.WorkingSetSize;*/
 
-	return physMemUsedByMe;
+	return 0;// physMemUsedByMe;
 }
 
 void Server_Main::SetCurrentCommand(std::string command)
