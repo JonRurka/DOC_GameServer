@@ -37,7 +37,7 @@ class AsyncServer {
 	friend class SocketUser;
 public:
 	
-	typedef void(*CommandActionPtr)(void*, std::shared_ptr<SocketUser>, Data);
+	typedef void(*CommandActionPtr)(void*, SocketUser&, Data);
 
 	AsyncServer(Server_Main* server);
 
@@ -61,7 +61,7 @@ public:
 
 	void AddPlayer(std::shared_ptr<SocketUser> user);
 	
-	void RemovePlayer(std::shared_ptr<SocketUser> user);
+	void RemovePlayer(std::string user);
 
 	bool HasPlayerSession(std::string session_key);
 
@@ -74,7 +74,7 @@ public:
 
 	void handle_accept(const boost::system::error_code& error);
 
-	void Process(std::shared_ptr<SocketUser> socket_user, Data data);
+	void Process(SocketUser* socket_user, Data data);
 	
 	
 
@@ -92,7 +92,7 @@ private:
 
 	struct ThreadCommand {
 		Data data;
-		std::shared_ptr<SocketUser> user;
+		std::string user;
 	};
 
 	static AsyncServer* m_instance;
@@ -118,7 +118,7 @@ private:
 	std::recursive_mutex m_user_mtx;
 
 	std::queue<std::shared_ptr<SocketUser>> m_queue_user_add;
-	std::queue<std::shared_ptr<SocketUser>> m_queue_user_remove;
+	std::queue<std::string> m_queue_user_remove;
 
 	std::queue<ThreadCommand> m_main_command_queue;
 	std::queue<ThreadCommand> m_async_command_queue;
@@ -127,16 +127,16 @@ private:
 
 	void DoAddPlayer(std::shared_ptr<SocketUser> user);
 
-	void DoRemovePlayer(std::shared_ptr<SocketUser> user);
+	void DoRemovePlayer(std::string user);
 
-	void DoProcess(std::shared_ptr<SocketUser> socket_user, Data data);
+	void DoProcess(std::string socket_user, Data data);
 
 	static void Process_Async(AsyncServer* svr);
 
-	static void System_Cmd_cb(void* obj_ptr, std::shared_ptr<SocketUser> socket_user, Data data) {
+	static void System_Cmd_cb(void* obj_ptr, SocketUser& socket_user, Data data) {
 		AsyncServer* svr = (AsyncServer*)obj_ptr;
 		svr->System_Cmd(socket_user, data);
 	}
-	void System_Cmd(std::shared_ptr<SocketUser> socket_user, Data data);
+	void System_Cmd(SocketUser& socket_user, Data data);
 
 };

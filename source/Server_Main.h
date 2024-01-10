@@ -106,13 +106,15 @@ public:
 
 	void UserConnected(std::shared_ptr<SocketUser> socket_user);
 
-	void UserDisconnected(std::shared_ptr<SocketUser> socket_user);
+	void UserDisconnected(SocketUser* socket_user);
 
 	void PlayerAuthenticated(std::shared_ptr<Player>, bool authorized);
 
 	bool Has_Player(uint32_t p_id) {
 		return m_players.find(p_id) != m_players.end();
 	}
+
+	std::shared_ptr<Player> CreateFakePlayer(uint32_t id);
 
 	Server_Main(char* args);
 
@@ -131,15 +133,13 @@ public:
 
 	void Dispose();
 
-	static void UserIdentify_cb(void* obj, std::shared_ptr<SocketUser> user, Data data) {
-		Server_Main* srv = (Server_Main*)obj;
-		srv->UserIdentify(user, data);
+	static void UserIdentify_cb(void* obj, SocketUser& user, Data data) {
+		m_instance->UserIdentify(user, data);
 	}
-	void UserIdentify(std::shared_ptr<SocketUser> user, Data data);
+	void UserIdentify(SocketUser& user, Data data);
 
-	static void JoinMatch_cb(void* obj, std::shared_ptr<SocketUser> user, Data data) {
-		Server_Main* srv = (Server_Main*)obj;
-		srv->JoinMatch(user, data);
+	static void JoinMatch_cb(void* obj, SocketUser& user, Data data) {
+		m_instance->JoinMatch(user, data);
 	}
-	void JoinMatch(std::shared_ptr<SocketUser> user, Data data);
+	void JoinMatch(SocketUser& user, Data data);
 };

@@ -45,10 +45,10 @@ bool MatchManager::AddMatchPlayer(std::shared_ptr<Player> player, std::string ma
 	}
 }
 
-void MatchManager::RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data data)
+void MatchManager::RoutMatchNetCommand(SocketUser& user, Data data)
 {
 	//Logger::Log("MatchCommandRouter: Received match command");
-	if (!user->Get_Authenticated()) {
+	if (!user.Get_Authenticated()) {
 		// send fail
 		Logger::Log("Match command route failed: user not authenticated!");
 		return;
@@ -58,10 +58,10 @@ void MatchManager::RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data da
 	//data.Buffer = BufferUtils::RemoveFront(2, data.Buffer);
 
 	
-	Player* player = Player::Cast_IUser(user->GetUser()).get();
+	Player* player = Player::Cast_IUser(user.GetUser()).get();
 
 	if (player != nullptr && player->Get_Active_Match() != nullptr) {
-		player->Get_Active_Match()->SubmitMatchCommand(user, data);
+		player->Get_Active_Match()->SubmitMatchCommand(player, data);
 	}
 
 	/*if (Has_Match_Short_ID(match_short_id)) {

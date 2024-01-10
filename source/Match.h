@@ -38,6 +38,8 @@ public:
 
 	bool RemovePlayer(std::shared_ptr<Player> player);
 
+	bool HasPlayer(uint32_t player_id);
+
 	bool HasPlayer(std::shared_ptr<Player> player);
 
 	void StartMatch();
@@ -46,14 +48,13 @@ public:
 
 	void BroadcastCommand(OpCodes::Client cmd, std::vector<uint8_t> data, Protocal type = Protocal_Tcp);
 
-	void SubmitMatchCommand(std::shared_ptr<SocketUser> user, Data data);
+	void SubmitMatchCommand(Player* user, Data data);
 
 private:
 
 	struct NetCommand {
 	public:
-		std::shared_ptr<SocketUser> user;
-		//SocketUser& user;
+		uint32_t user;
 		Data data;
 	};
 
@@ -76,7 +77,7 @@ private:
 
 	bool m_running;
 
-	void SubmitPlayerEvent(std::shared_ptr<SocketUser> user, OpCodes::Player_Events, std::vector<uint8_t> data);
+	void SubmitPlayerEvent(Player& user, OpCodes::Player_Events, std::vector<uint8_t> data);
 
 	void GetMatchInfo();
 
@@ -96,9 +97,9 @@ private:
 
 	void ProcessNetCommands();
 
-	void ExecuteNetCommand(std::shared_ptr<SocketUser> user, Data data);
+	void ExecuteNetCommand(uint32_t user, Data data);
 
-	void StartMatch_NetCmd(std::shared_ptr<SocketUser> user, Data data);
+	void StartMatch_NetCmd(Player& user, Data data);
 
-	void UpdateOrientation_NetCmd(std::shared_ptr<SocketUser> user, Data data);
+	void UpdateOrientation_NetCmd(Player& user, Data data);
 };

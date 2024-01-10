@@ -124,7 +124,7 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 
 	if (size == 0) {
 		Logger::Log("TCP Buffer empty!");
-		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock());
+		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock()->SessionToken);
 		return;
 	}
 
@@ -132,7 +132,7 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 
 	if (!socket_.is_open()) {
 		Logger::Log("TCP Socket closed!");
-		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock());
+		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock()->SessionToken);
 		return;
 	}
 
@@ -141,7 +141,7 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 		boost::asio::read(socket_, boost::asio::buffer(message, size));
 	}
 	catch (boost::system::system_error ex) {
-		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock());
+		AsyncServer::GetInstance()->RemovePlayer(socket_user.lock()->SessionToken);
 		return;
 	}
 

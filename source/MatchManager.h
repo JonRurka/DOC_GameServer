@@ -44,11 +44,11 @@ public:
 		return m_instance;
 	}
 
-	static void RoutMatchNetCommand_cb(void* obj, std::shared_ptr<SocketUser> user, Data data) {
+	static void RoutMatchNetCommand_cb(void* obj, SocketUser& user, Data data) {
 		m_instance->RoutMatchNetCommand(user, data);
 	}
 
-	void RoutMatchNetCommand(std::shared_ptr<SocketUser> user, Data data);
+	void RoutMatchNetCommand(SocketUser& user, Data data);
 
 private:
 

@@ -36,7 +36,7 @@ void SocketUser::Update(float dt)
 	auto now = Server_Main::GetEpoch();
 
 	if ((now - m_last_ping) > TIMEOUT_MS) {
-		_server->RemovePlayer(shared_from_this());
+		_server->RemovePlayer(SessionToken);
 	}
 }
 
@@ -201,7 +201,7 @@ void SocketUser::Close(bool sendClose, std::string reason)
 
 		tcp_connection_client->close();
 
-		_server->RemovePlayer(shared_from_this());
+		_server->RemovePlayer(SessionToken);
 
 		//if (CloseMessage)
 		//	Logger::Log("{0}: closed {1}", SessionToken, reason != "" ? "- " + reason : "");
@@ -218,7 +218,7 @@ void SocketUser::ProcessReceiveBuffer(std::vector<uint8_t> buffer, Protocal type
 		uint8_t command = buffer[0];
 		buffer = BufferUtils::RemoveFront(Remove_CMD, buffer);
 		Data data(type, command, buffer);
-		_server->Process(shared_from_this(), data);
+		_server->Process(this, data);
 	}
 	else {
 		Logger::Log(std::to_string(type) + ": Received empty buffer!");

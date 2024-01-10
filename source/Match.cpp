@@ -71,6 +71,11 @@ bool Match::RemovePlayer(std::shared_ptr<Player> player)
 	return false;
 }
 
+bool Match::HasPlayer(uint32_t player_id)
+{
+	return m_players.find(player_id) != m_players.end();;
+}
+
 bool Match::HasPlayer(std::shared_ptr<Player> player)
 {
 	return m_players.find(player->Get_UserID()) != m_players.end();
@@ -137,11 +142,11 @@ void Match::BroadcastCommand(OpCodes::Client cmd, std::vector<uint8_t> data, Pro
 	}
 }
 
-void Match::SubmitPlayerEvent(std::shared_ptr<SocketUser> user, OpCodes::Player_Events event_cmd, std::vector<uint8_t> data)
+void Match::SubmitPlayerEvent(Player& player, OpCodes::Player_Events event_cmd, std::vector<uint8_t> data)
 {
-	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
-	if (player != nullptr && user->Get_Authenticated()) {
-		player->Add_Player_Event(event_cmd, data);
+	//std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
+	if (player.Socket_User()->Get_Authenticated()) {
+		player.Add_Player_Event(event_cmd, data);
 	}
 }
 
@@ -292,10 +297,16 @@ void Match::ProcessNetCommands()
 	}
 }
 
-void Match::ExecuteNetCommand(std::shared_ptr<SocketUser> user, Data data)
+void Match::ExecuteNetCommand(uint32_t user_id, Data data)
 {
+	if (!HasPlayer(user_id))
+		return;
+
+	Player* player = m_players[user_id].get();
+
 	
 	if (data.Buffer.size() > 0) {
+
 		OpCodes::Server_Match sub_command = (OpCodes::Server_Match)data.Buffer[0];
 		data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
 
@@ -303,38 +314,38 @@ void Match::ExecuteNetCommand(std::shared_ptr<SocketUser> user, Data data)
 
 		switch (sub_command) {
 		case OpCodes::Server_Match::Debug_Start:
-			StartMatch_NetCmd(user, data);
+			StartMatch_NetCmd(*player, data);
 			break;
 		case OpCodes::Server_Match::Update_Orientation:
-			UpdateOrientation_NetCmd(user, data);
+			UpdateOrientation_NetCmd(*player, data);
 			break;
 		case OpCodes::Server_Match::Player_Event:
 			if (data.Buffer.size() > 0)
 			{
 				OpCodes::Player_Events event_cmd = (OpCodes::Player_Events)data.Buffer[0];
 				data.Buffer = BufferUtils::RemoveFront(Remove_CMD, data.Buffer);
-				SubmitPlayerEvent(user, event_cmd, data.Buffer);
+				SubmitPlayerEvent(*player, event_cmd, data.Buffer);
 			}
 			else {
 
-				Logger::LogWarning("Received malformed Match Player Event from '" + Player::Cast_IUser(user->GetUser())->Get_UserName() + "'!");
+				Logger::LogWarning("Received malformed Match Player Event from '" + player->Get_UserName() + "'!");
 			}
 			break;
 		}
 	}
 	else {
-		Logger::LogWarning("Received malformed Match Net Command from '" + Player::Cast_IUser(user->GetUser())->Get_UserName() + "'!");
+		Logger::LogWarning("Received malformed Match Net Command from '" + player->Get_UserName() + "'!");
 	}
 }
 
-void Match::StartMatch_NetCmd(std::shared_ptr<SocketUser> user, Data data)
+void Match::StartMatch_NetCmd(Player& user, Data data)
 {
 	// check if isolated mode
 
 	StartMatch();
 }
 
-void Match::UpdateOrientation_NetCmd(std::shared_ptr<SocketUser> user, Data data)
+void Match::UpdateOrientation_NetCmd(Player& player, Data data)
 {
 	//return;
 
@@ -353,10 +364,8 @@ void Match::UpdateOrientation_NetCmd(std::shared_ptr<SocketUser> user, Data data
 	glm::vec3 location = glm::vec3(loc_x, loc_y, loc_z);
 	glm::quat rotation = glm::quat(rot_w, rot_x, rot_y, rot_z);
 
-	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
-
-	player->Set_Location(location);
-	player->Set_Rotation(rotation);
+	player.Set_Location(location);
+	player.Set_Rotation(rotation);
 
 	std::string loc_str = "(" + std::to_string(loc_x) + ", " + std::to_string(loc_y) + ", " + std::to_string(loc_z) + ")";
 	std::string rot_str = "(" + std::to_string(rot_x) + ", " + std::to_string(rot_y) + ", " + std::to_string(rot_z) + ", " + std::to_string(rot_w) + ")";
@@ -364,10 +373,10 @@ void Match::UpdateOrientation_NetCmd(std::shared_ptr<SocketUser> user, Data data
 	//Logger::Log("Received orientation update ("+std::to_string(data.Buffer.size()) + "): " + loc_str + ", " + rot_str + ", " + std::to_string(data.Type));
 }
 
-void Match::SubmitMatchCommand(std::shared_ptr<SocketUser> user, Data data)
+void Match::SubmitMatchCommand(Player* user, Data data)
 {
 	NetCommand command;
-	command.user = user;
+	command.user = user->Get_UserID();
 	command.data = data;
 	m_command_queue.push(command);
 }

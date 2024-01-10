@@ -34,14 +34,14 @@ void Server_Main::UserConnected(std::shared_ptr<SocketUser> socket_user)
 	//socket_user->Send(OpCodes::Client::Request_Identity, std::vector<uint8_t>({ 0x01 }));
 }
 
-void Server_Main::UserDisconnected(std::shared_ptr<SocketUser> socket_user)
+void Server_Main::UserDisconnected(SocketUser* socket_user)
 {
 	//SocketUser* socket_user = (SocketUser*)socket_usr;
 
 	Logger::Log("Socket '" + socket_user->SessionToken + "' has disconnected.");
 
 	if (!socket_user->GetUser().expired()) {
-		std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(socket_user->GetUser().lock());
+		Player* player = std::dynamic_pointer_cast<Player>(socket_user->GetUser().lock()).get();
 		std::string username = player->Get_UserName();
 		if (Has_Player(player->Get_UserID())) {
 			m_players.erase(player->Get_UserID());
@@ -71,6 +71,20 @@ void Server_Main::PlayerAuthenticated(std::shared_ptr<Player> player, bool autho
 		player->Socket_User()->Close(true);
 		//delete player;
 	}
+}
+
+std::shared_ptr<Player> Server_Main::CreateFakePlayer(uint32_t id)
+{
+	Player::PlayerIdentity fake_identity;
+	fake_identity.UserName = "Fake_User_" + std::to_string(id);
+	fake_identity.UserID = id;
+	fake_identity.Distributor = 0;
+	fake_identity.User_Distro_ID = "fake_distro_id";
+	std::shared_ptr<Player> fake_player = std::shared_ptr<Player>(new Player());
+	fake_player->SetIdentity(fake_identity);
+	fake_player->Set_Location(glm::vec3(10, 5, 1.10));
+	fake_player->Set_Rotation(glm::quat());
+	return fake_player;
 }
 
 Server_Main::Server_Main(char* args)
@@ -219,10 +233,10 @@ void Server_Main::SetCurrentCommand(std::string command)
 	m_curCommand = command;
 }
 
-void Server_Main::UserIdentify(std::shared_ptr<SocketUser> user, Data data)
+void Server_Main::UserIdentify(SocketUser& user, Data data)
 {
 	std::shared_ptr<Player> player = std::make_shared<Player>();
-	user->SetUser(std::static_pointer_cast<IUser>(player));
+	user.SetUser(std::static_pointer_cast<IUser>(player));
 
 	bool is_identified = player->SetIdentity(HashHelper::BytesToString(data.Buffer));
 
@@ -230,24 +244,24 @@ void Server_Main::UserIdentify(std::shared_ptr<SocketUser> user, Data data)
 		m_authenticator->Authenticate(player);
 	}
 	else {
-		user->Close(true);
+		user.Close(true);
 		//delete player;
 	}
 
 	uint8_t res = is_identified ? 0x01 : 0x00;
 
-	user->Send(OpCodes::Client::Identify_Result, std::vector<uint8_t>({ res }));
+	user.Send(OpCodes::Client::Identify_Result, std::vector<uint8_t>({ res }));
 }
 
-void Server_Main::JoinMatch(std::shared_ptr<SocketUser> user, Data data)
+void Server_Main::JoinMatch(SocketUser& user, Data data)
 {
-	if (!user->Get_Authenticated()) {
+	if (!user.Get_Authenticated()) {
 		// send fail
-		user->Send(OpCodes::Client::Join_Match_Result, std::vector<uint8_t>({ 0x00, 0x00, 0x00 }));
+		user.Send(OpCodes::Client::Join_Match_Result, std::vector<uint8_t>({ 0x00, 0x00, 0x00 }));
 		return;
 	}
 
-	std::shared_ptr<Player> player = Player::Cast_IUser(user->GetUser());
+	std::shared_ptr<Player> player = Player::Cast_IUser(user.GetUser());
 
 	std::string json_string = HashHelper::BytesToString(data.Buffer);
 
@@ -262,23 +276,14 @@ void Server_Main::JoinMatch(std::shared_ptr<SocketUser> user, Data data)
 	if (ec) {
 		Logger::Log("Failed to parse match json.");
 		// send fail
-		user->Send(OpCodes::Client::Join_Match_Result, std::vector<uint8_t>({ 0x00, 0x00, 0x00 }));
+		user.Send(OpCodes::Client::Join_Match_Result, std::vector<uint8_t>({ 0x00, 0x00, 0x00 }));
 		return;
 	}
 
 	json::object ident_obj = json_val.as_object();
 	std::string match_id = std::string(ident_obj.at("Match_ID").as_string());
 
-	/*Player::PlayerIdentity fake_identity;
-	fake_identity.UserName = "Fake_User";
-	fake_identity.UserID = 0;
-	fake_identity.Distributor = 0;
-	fake_identity.User_Distro_ID = "fake_distro_id";*/
-	//Player* fake_player = new Player();
-	//fake_player->SetIdentity(fake_identity);
-	//fake_player->Set_Location(glm::vec3(0, 0, 1.10));
-	//fake_player->Set_Rotation(glm::quat());
-	//m_match_manager->AddMatchPlayer(fake_player, match_id);
+	m_match_manager->AddMatchPlayer(CreateFakePlayer(0), match_id);
 
 	bool join_res = m_match_manager->AddMatchPlayer(player, match_id);
 	
@@ -299,5 +304,5 @@ void Server_Main::JoinMatch(std::shared_ptr<SocketUser> user, Data data)
 
 	Logger::Log("Join " + player->Get_UserName() + " To match " + match_id + ", " + std::to_string(match_short_id));
 
-	user->Send(OpCodes::Client::Join_Match_Result, std::vector<uint8_t>({res, ((uint8_t*)&match_short_id)[0], ((uint8_t*)&match_short_id)[1]}));
+	user.Send(OpCodes::Client::Join_Match_Result, std::vector<uint8_t>({res, ((uint8_t*)&match_short_id)[0], ((uint8_t*)&match_short_id)[1]}));
 }

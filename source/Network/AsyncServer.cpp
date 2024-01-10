@@ -38,7 +38,7 @@ void AsyncServer::Update(float dt)
     }
 
     while (!m_queue_user_remove.empty()) {
-        std::shared_ptr<SocketUser>& user = m_queue_user_remove.front();
+        std::string user = m_queue_user_remove.front();
         m_queue_user_remove.pop();
 
         DoRemovePlayer(user);
@@ -85,7 +85,7 @@ void AsyncServer::Process_Async(AsyncServer* svr) {
 void AsyncServer::AddCommand(OpCodes::Server cmd, CommandActionPtr callback, void* obj, bool async)
 {
     if (!HasCommand((uint8_t)cmd)) {
-        NetCommand command;
+        NetCommand command{};
         command.Callback = callback;
         command.Obj_Ptr = obj;
         command.Is_Async = async;
@@ -98,7 +98,7 @@ void AsyncServer::AddPlayer(std::shared_ptr<SocketUser> user)
     m_queue_user_add.push(user);
 }
 
-void AsyncServer::RemovePlayer(std::shared_ptr<SocketUser> user)
+void AsyncServer::RemovePlayer(std::string user)
 {
     m_queue_user_remove.push(user);
 }
@@ -113,16 +113,20 @@ void AsyncServer::DoAddPlayer(std::shared_ptr<SocketUser> user) {
     }
 }
 
-void AsyncServer::DoRemovePlayer(std::shared_ptr<SocketUser> user) {
-    std::string session_token = user->SessionToken;
-    uint16_t udp_id = user->Get_UDP_ID();
+void AsyncServer::DoRemovePlayer(std::string user) {
+    std::string session_token = user;
     if (HasPlayerSession(session_token)) {
+
+        SocketUser* user_obj = m_socket_users[session_token].get();
+        uint16_t udp_id = user_obj->Get_UDP_ID();
+        m_server->UserDisconnected(user_obj);
+        user_obj->Close(false);
+
         m_user_mtx.lock();
         m_socket_users.erase(session_token);
         m_udp_id_map.erase(udp_id);
         m_user_mtx.unlock();
-        m_server->UserDisconnected(user);
-        user->Close(false);
+
         PopulateUserList();
         //delete user;
     }
@@ -246,7 +250,7 @@ void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer, boost::asio::ip::addr
             
             // Compare address to client.
 
-            std::shared_ptr<SocketUser> socket_user = m_udp_id_map[udp_id];
+            SocketUser* socket_user = m_udp_id_map[udp_id].get();
             Data data(Protocal_Udp, command, buffer);
             Process(socket_user, data);
         }
@@ -266,7 +270,7 @@ void AsyncServer::handle_accept(const boost::system::error_code& error) {
         Logger::Log("Client connect failed");
 }
 
-void AsyncServer::Process(std::shared_ptr<SocketUser> socket_user, Data data)
+void AsyncServer::Process(SocketUser* socket_user, Data data)
 {
     if (HasCommand(data.command)) {
 
@@ -276,7 +280,7 @@ void AsyncServer::Process(std::shared_ptr<SocketUser> socket_user, Data data)
         
         ThreadCommand thread_cmd;
         thread_cmd.data = data;
-        thread_cmd.user = socket_user;
+        thread_cmd.user = socket_user->SessionToken;
         
         if (command_obj.Is_Async && m_run_async_commands) {
             //Logger::Log("Received async command: " + std::to_string(data.command));
@@ -312,12 +316,23 @@ uint16_t AsyncServer::Get_New_UDP_ID()
     return newNum;
 }
 
-void AsyncServer::DoProcess(std::shared_ptr<SocketUser> socket_user, Data data) {
+void AsyncServer::DoProcess(std::string socket_user, Data data) {
+
     NetCommand command_obj = m_commands[data.command];
-    command_obj.Callback(command_obj.Obj_Ptr, socket_user, data);
+
+    m_user_mtx.lock();
+    SocketUser* user_obj;
+    bool hasPlayer = HasPlayerSession(socket_user);
+    if (hasPlayer) {
+        user_obj = m_socket_users[socket_user].get();
+    }
+    m_user_mtx.unlock();
+
+    if (hasPlayer)
+        command_obj.Callback(command_obj.Obj_Ptr, *user_obj, data);
 }
 
-void AsyncServer::System_Cmd(std::shared_ptr<SocketUser> socket_user, Data data)
+void AsyncServer::System_Cmd(SocketUser& socket_user, Data data)
 {
     uint8_t sub_command = data.Buffer[0];
     //Logger::Log("Sub Command: " + std::to_string(sub_command));
@@ -326,16 +341,16 @@ void AsyncServer::System_Cmd(std::shared_ptr<SocketUser> socket_user, Data data)
 
     switch (sub_command) {
     case 0x02: // disconnect
-        RemovePlayer(socket_user);
+        RemovePlayer(socket_user.SessionToken);
         break;
     case 0x03: // ping
-        socket_user->ResetPingCounter();
-        socket_user->Send(OpCodes::Client::System_Reserved, std::vector<uint8_t>({ 0x03, 0x01 }), Protocal_Tcp);
+        socket_user.ResetPingCounter();
+        socket_user.Send(OpCodes::Client::System_Reserved, std::vector<uint8_t>({ 0x03, 0x01 }), Protocal_Tcp);
         //Logger::Log("Received ping for client: " + socket_user->SessionToken);
         break;
     case 0x04: // set UDP client port
         uint16_t port = *((uint16_t*)data.Buffer.data());
-        socket_user->Set_Client_UDP_Port(port);
+        socket_user.Set_Client_UDP_Port(port);
         break;
     }
 }
