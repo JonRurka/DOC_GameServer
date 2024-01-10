@@ -3,6 +3,9 @@
 #include "stdafx.h"
 #include "Network/Data.h"
 
+
+#include <boost/timer.hpp>
+
 class CommandExecuter;
 class Logger;
 class AsyncServer;

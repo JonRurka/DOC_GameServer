@@ -3,6 +3,12 @@
 #include "../stdafx.h"
 #include "../Logger.h"
 
+#include <boost/asio.hpp>
+#include <boost/timer.hpp>
+#include <boost/bind.hpp>
+#include <boost/array.hpp>
+#include <boost/enable_shared_from_this.hpp>
+
 class AsyncServer;
 class SocketUser;
 

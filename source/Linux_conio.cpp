@@ -1,18 +1,12 @@
-/**
- Linux (POSIX) implementation of _kbhit().
- Morgan McGuire, morgan@cs.brown.edu
- https://www.flipcode.com/archives/_kbhit_for_Linux.shtml
- */
-
-#pragma once
-#include "stdafx.h"
+#include "Linux_conio.h"
 
 #ifdef LINUX_PLATFORM
 
-
 #include <sys/select.h>
-#include <termios.h>
 #include <sys/ioctl.h>
+#include <termios.h>
+
+static struct termios old, current;
 
 int kbhit() {
     static const int STDIN = 0;
@@ -32,8 +26,6 @@ int kbhit() {
     ioctl(STDIN, FIONREAD, &bytesWaiting);
     return bytesWaiting;
 }
-
-static struct termios old, current;
 
 /* Initialize new terminal i/o settings */
 void initTermios(int echo)

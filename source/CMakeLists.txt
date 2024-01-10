@@ -4,7 +4,7 @@ set(${PROJECT_NAME}_headers
 	stdafx.h
 	exe_main.h
 	Server_Main.h
-	Linux_conio.hpp
+	Linux_conio.h
 	Logger.h
 	CommandExecuter.h
 	IUser.h
@@ -17,6 +17,7 @@ set(${PROJECT_NAME}_headers
 set(${PROJECT_NAME}_sources
     exe_main.cpp
 	Server_Main.cpp
+	Linux_conio.cpp
 	Logger.cpp
 	CommandExecuter.cpp
 	IUser.cpp

@@ -4,6 +4,12 @@
 class AsyncServer;
 class SocketUser;
 
+#include <boost/asio.hpp>
+#include <boost/timer.hpp>
+#include <boost/bind.hpp>
+#include <boost/array.hpp>
+#include <boost/enable_shared_from_this.hpp>
+
 using boost::asio::ip::tcp;
 using boost::asio::ip::address;
 
