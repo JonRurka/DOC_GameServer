@@ -26,9 +26,7 @@ void tcp_server::handle_accept(tcp_connection::pointer new_connection, const boo
 		auto user = std::shared_ptr<SocketUser>(new SocketUser(
 			async_server, 
 			new_connection));
-		char result = 0x00;
 		user->HandleStartConnect();
-		//new_connection->Send("test", 4);
 	}
 	else {
 		Logger::Log("New connection failed.");

@@ -4,7 +4,7 @@
 #include "SocketUser.h"
 #include "../Server_Main.h"
 
-void udp_server::start_receive(std::shared_ptr<SocketUser> socket_user)
+void udp_server::start_receive(SocketUser* socket_user)
 {
 	int port = m_port;
 	if (SERVER_LOCAL) {
@@ -33,7 +33,7 @@ void udp_server::close()
 	m_thread.join();
 }
 
-void udp_server::handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, std::shared_ptr<SocketUser> socket_user)
+void udp_server::handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, SocketUser* socket_user)
 {
 	//start_receive(socket_user);
 	return;

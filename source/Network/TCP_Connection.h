@@ -17,6 +17,7 @@ private:
 	std::map<uint64_t, uint8_t*> send_buffers;
 	int numSends = 0;
 	std::weak_ptr<SocketUser> socket_user;
+	std::vector<std::shared_ptr<SocketUser>> tmp_socket_ref;
 public:
 	typedef boost::shared_ptr<tcp_connection> pointer;
 
@@ -57,7 +58,7 @@ private:
 	void Handle_Initial_Connect(
 		const boost::system::error_code&, 
 		size_t transfered,
-		std::shared_ptr<SocketUser> p_socket_user);
+		SocketUser* p_socket_user);
 
 	void handle_read(const boost::system::error_code&, size_t transfered);
 };

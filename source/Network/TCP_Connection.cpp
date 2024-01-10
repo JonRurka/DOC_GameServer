@@ -48,12 +48,13 @@ void tcp_connection::Start_Read()
 void tcp_connection::Start_Initial_Connect(std::shared_ptr<SocketUser> p_socket_user)
 {
 	Set_Socket_User(p_socket_user);
+	tmp_socket_ref.push_back(p_socket_user);
 
 	boost::asio::async_read(socket_, boost::asio::buffer(length_buff, 2),
 		boost::bind(&tcp_connection::Handle_Initial_Connect, shared_from_this(),
 			boost::asio::placeholders::error,
 			boost::asio::placeholders::bytes_transferred,
-			p_socket_user));
+			p_socket_user.get()));
 }
 
 void tcp_connection::close()
@@ -72,7 +73,7 @@ void tcp_connection::handle_write(const boost::system::error_code&, size_t trans
 void tcp_connection::Handle_Initial_Connect(
 	const boost::system::error_code& err, 
 	size_t transfered, 
-	std::shared_ptr<SocketUser> p_socket_user)
+	SocketUser* p_socket_user)
 {
 	Logger::Log("Handle_Initial_Connect");
 	if (err) {
@@ -98,7 +99,8 @@ void tcp_connection::Handle_Initial_Connect(
 	delete[] message;
 	
 	//SocketUser* socket_usr = (SocketUser*)socket_user;
-	p_socket_user->HandleStartConnect_Finished(successfull);
+	tmp_socket_ref[0]->HandleStartConnect_Finished(successfull);
+	tmp_socket_ref.clear();
 
 	Server_Main::SetMemoryUsageForThread("tcp_service");
 }

@@ -37,13 +37,13 @@ public:
 
 	void Send(udp::endpoint remote_endpoint, std::vector<uint8_t> sending);
 
-	void start_receive(std::shared_ptr<SocketUser> socket_user);
+	void start_receive(SocketUser* socket_user);
 
 	void AbortListen();
 
 private:
 	
-	void handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, std::shared_ptr<SocketUser> socket_user);
+	void handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, SocketUser* socket_user);
 
 	void handle_send(uint8_t* buffer);
 

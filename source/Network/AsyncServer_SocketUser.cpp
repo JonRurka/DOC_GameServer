@@ -88,7 +88,7 @@ void SocketUser::EnableUdp(int port)
 	UdpEndPoint.port(port);
 	//Logger.Log("UDP end point: {0}:{1}", udpEndPoint.Address.ToString(), udpEndPoint.Port);
 	UdpEnabled = true;
-	_server->m_udp_server->start_receive(shared_from_this());
+	_server->m_udp_server->start_receive(this);
 }
 
 void SocketUser::SetUser(std::shared_ptr<IUser> user)
