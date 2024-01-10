@@ -9,7 +9,9 @@
 namespace
 {
 
-static struct termios old, current;
+    termios old, current;
+
+}
 
 int kbhit() {
     static const int STDIN = 0;
@@ -73,6 +75,6 @@ char getche(void)
     return getch_(1);
 }
 
-}
+
 
 #endif
