@@ -63,5 +63,5 @@
 #define WIN32_LEAN_AND_MEAN
 #else
 #define LINUX_PLATFORM
-#include "Linux_conio.hpp"
+#include "Linux_conio.h"
 #endif
