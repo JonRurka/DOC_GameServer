@@ -247,7 +247,7 @@ void Server_Main::JoinMatch(std::shared_ptr<SocketUser> user, Data data)
 		return;
 	}
 
-	std::shared_ptr<Player> player = std::dynamic_pointer_cast<Player>(user->GetUser().lock());
+	std::shared_ptr<Player> player = Player::Cast_IUser(user->GetUser());
 
 	std::string json_string = HashHelper::BytesToString(data.Buffer);
 
@@ -269,11 +269,11 @@ void Server_Main::JoinMatch(std::shared_ptr<SocketUser> user, Data data)
 	json::object ident_obj = json_val.as_object();
 	std::string match_id = std::string(ident_obj.at("Match_ID").as_string());
 
-	Player::PlayerIdentity fake_identity;
+	/*Player::PlayerIdentity fake_identity;
 	fake_identity.UserName = "Fake_User";
 	fake_identity.UserID = 0;
 	fake_identity.Distributor = 0;
-	fake_identity.User_Distro_ID = "fake_distro_id";
+	fake_identity.User_Distro_ID = "fake_distro_id";*/
 	//Player* fake_player = new Player();
 	//fake_player->SetIdentity(fake_identity);
 	//fake_player->Set_Location(glm::vec3(0, 0, 1.10));

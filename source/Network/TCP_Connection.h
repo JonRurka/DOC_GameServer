@@ -13,7 +13,7 @@ private:
 	tcp::socket socket_;
 	//std::map<int, std::vector<char>> send_buff;
 	int sent;
-	uint8_t length_buff[2];
+	uint8_t length_buff[2]{};
 	std::map<uint64_t, uint8_t*> send_buffers;
 	int numSends = 0;
 	std::weak_ptr<SocketUser> socket_user;
@@ -49,7 +49,6 @@ private:
 	tcp_connection(boost::asio::io_service& io_service)
 		: socket_(io_service)
 	{
-		ZeroMemory(length_buff, 2);
 		sent = 0;
 	}
 

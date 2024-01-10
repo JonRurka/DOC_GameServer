@@ -12,7 +12,6 @@ void udp_server::start_receive(SocketUser* socket_user)
 	}
 
 	uint8_t* buffer = new uint8_t[MAX_UDP_SIZE];
-	//ZeroMemory(buffer, MAX_UDP_SIZE);
 
 	//socket_user->UdpEndPoint.port()
 	udp::endpoint remote_endpoint = udp::endpoint(address_v4::any(), socket_user->UdpEndPoint.port()); //udp::endpoint(address_v4::any(), port);

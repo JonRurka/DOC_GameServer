@@ -35,6 +35,12 @@ private:
 
 public:
 
+	SocketUser() {
+		Connected = false;
+		has_user = false;
+		UdpID = 0;
+	}
+
 	SocketUser(AsyncServer* server, tcp_connection::pointer client);
 
 	void Update(float dt);

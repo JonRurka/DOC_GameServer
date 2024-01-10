@@ -38,7 +38,7 @@ void tcp_connection::Send(std::vector<uint8_t> sending)
 
 void tcp_connection::Start_Read()
 {
-	ZeroMemory(length_buff, 2);
+
 	boost::asio::async_read(socket_, boost::asio::buffer(length_buff, 2),
 		boost::bind(&tcp_connection::handle_read, shared_from_this(),
 			boost::asio::placeholders::error,
@@ -151,8 +151,8 @@ void tcp_connection::handle_read(const boost::system::error_code& err, size_t tr
 	std::vector msg(message, message + size);
 	delete[] message;
 
-	
-	socket_user.lock()->ProcessReceiveBuffer(msg, Protocal_Tcp);
+	if (!socket_user.expired())
+		socket_user.lock()->ProcessReceiveBuffer(msg, Protocal_Tcp);
 
 	Server_Main::SetMemoryUsageForThread("tcp_service");
 }

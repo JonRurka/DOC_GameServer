@@ -6,7 +6,7 @@ CommandExecuter::CommandExecuter()
 {
     running = false;
     _inputStr_size = 0;
-    ZeroMemory(_inputStr, INPUT_MAX);
+    
     //c_thread = NULL;
 
 }
@@ -15,7 +15,6 @@ void CommandExecuter::Run(bool multiThread)
 {
     running = true;
     _inputStr_size = 0;
-    ZeroMemory(_inputStr, INPUT_MAX);
     if (multiThread)
         c_thread = std::thread(&CommandExecuter::Loop, this);
 }
@@ -53,7 +52,7 @@ void CommandExecuter::Process()
 
 
         Server_Main::Instance()->SetCommand(GetCurrentInput());
-        ZeroMemory(_inputStr, INPUT_MAX);
+        memset(_inputStr, 0, INPUT_MAX);
         _inputStr_size = 0;
         Server_Main::Instance()->SetCurrentCommand(GetCurrentInput());
     }

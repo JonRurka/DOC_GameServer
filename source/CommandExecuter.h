@@ -9,7 +9,7 @@ private:
 	bool running;
 	std::thread c_thread;
 
-	char _inputStr[INPUT_MAX];
+	char _inputStr[INPUT_MAX]{};
 	int _inputStr_size;
 
 	void Loop();

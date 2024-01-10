@@ -53,6 +53,7 @@ private:
 	struct NetCommand {
 	public:
 		std::shared_ptr<SocketUser> user;
+		//SocketUser& user;
 		Data data;
 	};
 

@@ -209,7 +209,6 @@ void Match::SendOrientationUpdates()
 		uint8_t num_orientations = m_players.size();
 
 		/*std::vector<uint8_t> send_buff;
-		//send_buff.reserve((Player::OrientationSize() + 1) * num_orientations + 1);
 
 		
 		m_player_mtx.lock();
