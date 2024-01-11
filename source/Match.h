@@ -71,6 +71,7 @@ private:
 	MatchState m_match_state;
 
 	uint64_t m_last_orientation_update;
+	uint64_t m_last_frame;
 
 	uint8_t* m_orientation_send_buffer = nullptr;
 	int m_orientation_send_buffer_size = 0;
@@ -87,7 +88,7 @@ private:
 
 	void GameLoop();
 
-	void AsynUpdate();
+	void AsynUpdate(float dt);
 
 	void UpdatePlayers(float dt);
 

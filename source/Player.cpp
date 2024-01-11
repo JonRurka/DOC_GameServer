@@ -63,15 +63,23 @@ bool Player::SetIdentity(PlayerIdentity identity)
 
 void Player::MatchUpdate(float dt)
 {
-	/*auto now = Server_Main::GetEpoch();
+	
 
-	if ((now - m_sent_last_jump) > SEND_DEBUG_JUMP) {
+	if (m_identity.UserID == 0) {
 
-		if (m_identity.UserID == 0) {
-			Add_Player_Event(OpCodes::Player_Events::Jump);
+
+		auto now = Server_Main::GetEpoch();
+
+		if ((now - m_sent_last_jump) > SEND_DEBUG_JUMP) {
+
+			m_sent_last_jump = Server_Main::GetEpoch();
 		}
 
-		m_sent_last_jump = Server_Main::GetEpoch();
-	}*/
+
+		//m_location += glm::vec3(6 * dt, 0, 0);
+
+
+		//Add_Player_Event(OpCodes::Player_Events::Jump);
+	}
 
 }

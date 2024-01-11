@@ -168,6 +168,7 @@ void Match::ThreadInit()
 	m_match_state = MatchState::Joined_Waiting;
 
 	m_last_orientation_update = Server_Main::GetEpoch();
+	m_last_frame = Server_Main::GetEpoch();
 
 	Logger::Log("Match " + m_ID + " Waiting for players...");
 }
@@ -176,14 +177,17 @@ void Match::GameLoop()
 {
 	while (m_running) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		AsynUpdate();
+
+		uint64_t now = Server_Main::GetEpoch();
+		float delta_time = (now - m_last_frame) / 1000.0;
+		m_last_frame = now;
+
+		AsynUpdate(delta_time);
 	}
 }
 
-void Match::AsynUpdate()
+void Match::AsynUpdate(float dt)
 {
-	float dt = 0;
-
 	ProcessNetCommands();
 	UpdatePlayers(dt);
 	SendOrientationUpdates();
@@ -250,7 +254,7 @@ void Match::SendOrientationUpdates()
 		std::vector<uint8_t> send_buff(m_orientation_send_buffer, m_orientation_send_buffer + m_orientation_send_buffer_size);
 		
 
-		BroadcastCommand(OpCodes::Client::Update_Orientations, send_buff); //Protocal_Udp
+		BroadcastCommand(OpCodes::Client::Update_Orientations, send_buff, Protocal_Udp); //Protocal_Udp
 
 
 		m_last_orientation_update = Server_Main::GetEpoch();

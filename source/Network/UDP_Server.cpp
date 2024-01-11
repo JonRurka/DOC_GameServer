@@ -11,17 +11,17 @@ void udp_server::start_receive(SocketUser* socket_user)
 		port += 1;
 	}
 
-	uint8_t* buffer = new uint8_t[MAX_UDP_SIZE];
-
 	//socket_user->UdpEndPoint.port()
-	udp::endpoint remote_endpoint = udp::endpoint(address_v4::any(), socket_user->UdpEndPoint.port()); //udp::endpoint(address_v4::any(), port);
+	udp::endpoint remote_endpoint = udp::endpoint(address_v4::any(), port);//udp::endpoint(address_v4::any(), socket_user->UdpEndPoint.port()); //udp::endpoint(address_v4::any(), port);
 
 	//Logger::Log("Receiving UDP from socket_user: " + std::to_string(remote_endpoint.port()));
 
+	m_lock.lock();
 	recv_socket_.async_receive_from(
-		boost::asio::buffer(buffer, MAX_UDP_SIZE), remote_endpoint,
+		boost::asio::buffer(recv_buffer_, MAX_UDP_SIZE), remote_endpoint,
 		boost::bind(&udp_server::handle_receive, this,
-			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred, buffer, remote_endpoint, socket_user));
+			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred, remote_endpoint, socket_user));
+	m_lock.unlock();
 }
 
 void udp_server::close()
@@ -29,19 +29,17 @@ void udp_server::close()
 	Logger::Log("close UDP service.");
 	m_running = false;
 	io_service_.stop();
-	m_thread.join();
+	m_thread_service.join();
+	m_thread_sends.join();
 }
 
-void udp_server::handle_receive(const boost::system::error_code& error, size_t transfered, uint8_t* buffer, udp::endpoint endpoint, SocketUser* socket_user)
+void udp_server::handle_receive(const boost::system::error_code& error, size_t transfered, udp::endpoint endpoint, SocketUser* socket_user)
 {
-	//start_receive(socket_user);
-	return;
-
 
 	if (error)
 	{
-		if (error.value() == boost::asio::error::operation_aborted) {
-			/*Logger::Log("UDP receive operation aborted");
+		/*if (error.value() == boost::asio::error::operation_aborted) {
+			Logger::Log("UDP receive operation aborted");
 			if (socket_user->UdpEnabled) {
 				Logger::Log("Reboot receive.");
 				start_receive(socket_user);
@@ -50,8 +48,8 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 			else {
 				Logger::Log("Not restarting listen for disconnected client.");
 				return;
-			}*/
-		}
+			}
+		}*/
 
 		Logger::Log("UDP Receive Error (" + std::to_string(error.value()) + "): " + error.what());
 		start_receive(socket_user);
@@ -67,23 +65,22 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 
 	//Logger::Log("received UDP packet");
 
-	uint16_t size = *((uint16_t*)buffer);
+	uint16_t size = *((uint16_t*)recv_buffer_);
 
-	std::vector<uint8_t> msg(buffer + 2, buffer + (size + 2));
+	//std::vector<uint8_t> msg(buffer + 2, buffer + (size + 2));
 
-	delete[] buffer;
-
-	//Logger::Log("Received buffer of length: " + std::to_string(msg.size()));
 
 	//msg = BufferUtils::RemoveFront(Remove_LENGTH, msg);
 
 	// Start receiving new data as soon as possible and yeet this data onto a queue.
+
+	async_server->Receive_UDP(&recv_buffer_[2], size, endpoint.address());
+
+
 	start_receive(socket_user);
-
-
 	//async_server->Receive_UDP(msg, endpoint.address());
 
-	Server_Main::SetMemoryUsageForThread("udp_service");
+	//Server_Main::SetMemoryUsageForThread("udp_service");
 }
 
 void udp_server::Send(udp::endpoint remote_endpoint, uint8_t* sending, size_t len)
@@ -97,13 +94,58 @@ void udp_server::Send(udp::endpoint remote_endpoint, std::vector<uint8_t> sendin
 {
 	sending = BufferUtils::AddLength(sending);
 
-	uint8_t* buffer = new uint8_t[sending.size()];
-	memcpy(buffer, sending.data(), sending.size());
+	//Logger::Log("Send UDP message 1 ("+ std::to_string(sending.size()) + "): " + remote_endpoint.address().to_string() + ": " + std::to_string(remote_endpoint.port()));
 
-	//Logger::Log("UDP Sent: " + std::to_string(sending.size()) + " on port " + std::to_string(remote_endpoint.port()));
+	Send_Message msg{};
+	msg.sending = sending;
+	msg.remote_endpoint = remote_endpoint;
 
-	recv_socket_.async_send_to(boost::asio::buffer(buffer, sending.size()), remote_endpoint,
-		boost::bind(&udp_server::handle_send, this, buffer));
+	m_send_lock.lock();
+	m_send_messages.push(msg);
+	m_send_lock.unlock();
+
+	//Logger::Log("Push UDP message");
+	m_sends_semaphore_2.release();
+	
+}
+
+void udp_server::start_send()
+{
+	if (!m_running) {
+		return;
+	}
+
+	m_sends_semaphore_2.acquire();
+
+	m_send_lock.lock();
+	Send_Message msg{};
+	if (!m_send_messages.empty()) {
+		msg = m_send_messages.front();
+		m_send_messages.pop();
+	}
+	else {
+		m_send_lock.unlock();
+		return;
+	}
+	m_send_lock.unlock();
+
+	udp::endpoint remote_endpoint = msg.remote_endpoint;
+
+	memcpy(m_send_buff, msg.sending.data(), msg.sending.size());
+
+	recv_socket_.async_send_to(boost::asio::buffer(m_send_buff, msg.sending.size()), remote_endpoint,
+		boost::bind(&udp_server::handle_send, this));
+
+	//Logger::Log("Send UDP message 2 (" + std::to_string(msg.sending.size()) + "): " + remote_endpoint.address().to_string() + ": " + std::to_string(remote_endpoint.port()));
+	
+}
+
+void udp_server::handle_send()
+{
+	m_sends_semaphore_1.release();
+
+
+	//Server_Main::SetMemoryUsageForThread("udp_service");
 }
 
 void udp_server::AbortListen()
@@ -112,19 +154,11 @@ void udp_server::AbortListen()
 	recv_socket_.cancel(); // cancel events on SocketUser disconnect, and start listening again.
 }
 
-void udp_server::handle_send(uint8_t* buffer)
-{
-	delete[] buffer;
-
-	//Logger::Log("Delete resources: " + std::to_string(send_buffers.size()));
-
-	Server_Main::SetMemoryUsageForThread("udp_service");
-}
-
 void udp_server::RunService(udp_server* svr)
 {
 	
 	Logger::Log("Running UPD io_service");
+	svr->start_send();
 	while (svr->m_running) {
 		svr->io_service_.run();
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));

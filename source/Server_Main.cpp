@@ -283,7 +283,7 @@ void Server_Main::JoinMatch(SocketUser& user, Data data)
 	json::object ident_obj = json_val.as_object();
 	std::string match_id = std::string(ident_obj.at("Match_ID").as_string());
 
-	m_match_manager->AddMatchPlayer(CreateFakePlayer(0), match_id);
+	//m_match_manager->AddMatchPlayer(CreateFakePlayer(0), match_id);
 
 	bool join_res = m_match_manager->AddMatchPlayer(player, match_id);
 	

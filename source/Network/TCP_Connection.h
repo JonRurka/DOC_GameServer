@@ -1,5 +1,6 @@
 #pragma once
 #include "../stdafx.h"
+#include "../Logger.h"
 
 class AsyncServer;
 class SocketUser;
@@ -9,6 +10,8 @@ class SocketUser;
 #include <boost/bind.hpp>
 #include <boost/array.hpp>
 #include <boost/enable_shared_from_this.hpp>
+
+#include <semaphore>
 
 using boost::asio::ip::tcp;
 using boost::asio::ip::address;
@@ -24,6 +27,9 @@ private:
 	int numSends = 0;
 	std::weak_ptr<SocketUser> socket_user;
 	std::vector<std::shared_ptr<SocketUser>> tmp_socket_ref;
+	std::mutex m_lock;
+
+	uint8_t m_send_buffer[UINT16_MAX];
 public:
 	typedef boost::shared_ptr<tcp_connection> pointer;
 
@@ -56,14 +62,39 @@ private:
 		: socket_(io_service)
 	{
 		sent = 0;
+		m_running = true;
+		m_thread_sends = std::thread(RunSend, this);
+		//start_send();
 	}
 
-	void handle_write(const boost::system::error_code&, size_t transfered, uint8_t* buffer);
+	void handle_write(const boost::system::error_code&, size_t transfered);
 
 	void Handle_Initial_Connect(
 		const boost::system::error_code&, 
 		size_t transfered,
 		SocketUser* p_socket_user);
 
+	static void RunSend(tcp_connection* srv) {
+		while (srv->m_running) {
+			srv->start_send();
+			srv->m_sends_semaphore_1.acquire();
+		}
+	}
+
+	void start_send();
+
 	void handle_read(const boost::system::error_code&, size_t transfered);
+
+	struct Send_Message {
+		std::vector<uint8_t> sending;
+	};
+
+	std::queue<Send_Message> m_send_messages;
+	bool m_running;
+	std::thread m_thread_sends;
+
+	
+	std::binary_semaphore m_sends_semaphore_1{ 0 };
+	std::binary_semaphore m_sends_semaphore_2{ 0 };
+	std::mutex m_send_lock;
 };

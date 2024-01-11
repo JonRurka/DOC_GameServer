@@ -88,7 +88,7 @@ void SocketUser::EnableUdp(int port)
 	UdpEndPoint.port(port);
 	//Logger.Log("UDP end point: {0}:{1}", udpEndPoint.Address.ToString(), udpEndPoint.Port);
 	UdpEnabled = true;
-	_server->m_udp_server->start_receive(this);
+	//_server->m_udp_server->start_receive(this);
 }
 
 void SocketUser::SetUser(std::shared_ptr<IUser> user)
@@ -217,8 +217,8 @@ void SocketUser::ProcessReceiveBuffer(std::vector<uint8_t> buffer, Protocal type
 	{
 		uint8_t command = buffer[0];
 		buffer = BufferUtils::RemoveFront(Remove_CMD, buffer);
-		Data data(type, command, buffer);
-		_server->Process(this, data);
+		//Data data(type, command, buffer);
+		_server->Process(this, command, buffer.data(), buffer.size(), type);
 	}
 	else {
 		Logger::Log(std::to_string(type) + ": Received empty buffer!");

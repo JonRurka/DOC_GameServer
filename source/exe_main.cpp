@@ -3,8 +3,8 @@
 
 int main()
 {
-
-	Server_Main* server = new Server_Main("");
+	std::string args;
+	Server_Main* server = new Server_Main((char*)args.c_str());
 	server->Start();
 
 	return 0;

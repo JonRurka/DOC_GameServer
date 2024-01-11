@@ -72,10 +72,12 @@ public:
 
 	void Receive_UDP(std::vector<uint8_t> data, boost::asio::ip::address endpoint);
 
+	void Receive_UDP(uint8_t* data, uint16_t size, boost::asio::ip::address endpoint);
+
 	void handle_accept(const boost::system::error_code& error);
 
-	void Process(SocketUser* socket_user, Data data);
-	
+	//void Process(SocketUser* socket_user, Data data);
+	void Process(SocketUser* socket_user, uint8_t command, uint8_t* data, int size, Protocal type);
 	
 
 	static AsyncServer* GetInstance() {
@@ -91,8 +93,12 @@ private:
 	};
 
 	struct ThreadCommand {
-		Data data;
+		//Data data;
+		uint8_t command;
 		std::string user;
+		uint8_t* buffer;
+		int buffer_size;
+		Protocal type;
 	};
 
 	static AsyncServer* m_instance;

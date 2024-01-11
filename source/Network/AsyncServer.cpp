@@ -57,8 +57,9 @@ void AsyncServer::Update(float dt)
     while (!m_main_command_queue.empty()) {
         ThreadCommand thr_command = m_main_command_queue.front();
         m_main_command_queue.pop();
-
-        DoProcess(thr_command.user, thr_command.data);
+        Data data(thr_command.type, thr_command.command, std::vector<uint8_t>(thr_command.buffer, thr_command.buffer + thr_command.buffer_size));
+        delete[] (thr_command.buffer);
+        DoProcess(thr_command.user, data);
     }
 }
 
@@ -74,8 +75,9 @@ void AsyncServer::Process_Async(AsyncServer* svr) {
         while (!svr->m_async_command_queue.empty()) {
             ThreadCommand thr_command = svr->m_async_command_queue.front();
             svr->m_async_command_queue.pop();
-
-            svr->DoProcess(thr_command.user, thr_command.data);
+            Data data(thr_command.type, thr_command.command, std::vector<uint8_t>(thr_command.buffer, thr_command.buffer + thr_command.buffer_size));
+            delete[] (thr_command.buffer);
+            svr->DoProcess(thr_command.user, data);
         }
 
         Server_Main::SetMemoryUsageForThread("async_server_process");
@@ -238,6 +240,11 @@ void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer, boost::asio::ip::addr
 {
     if (buffer.size() >= 3)
     {
+        if (buffer.size() > MAX_UDP_SIZE) {
+            Logger::LogWarning("Received malformed UDP packet");
+            //return;
+        }
+
         uint16_t udp_id = *((uint16_t*)buffer.data());
         buffer = BufferUtils::RemoveFront(Remove_UDP_ID, buffer);
 
@@ -252,7 +259,7 @@ void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer, boost::asio::ip::addr
 
             SocketUser* socket_user = m_udp_id_map[udp_id].get();
             Data data(Protocal_Udp, command, buffer);
-            Process(socket_user, data);
+            //Process(socket_user, data);
         }
         else {
             Logger::Log("UDP ID Not Found: " + std::to_string(udp_id));
@@ -263,6 +270,38 @@ void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer, boost::asio::ip::addr
     }
 }
 
+void AsyncServer::Receive_UDP(uint8_t* data, uint16_t size, boost::asio::ip::address endpoint)
+{
+    if (size >= 3)
+    {
+        uint16_t udp_id = *((uint16_t*)data);
+        uint8_t* buffer = &data[2];
+        //uint8_t* buffer = BufferUtils::RemoveFront(Remove_UDP_ID, buffer);
+
+        uint8_t command = buffer[0];
+        buffer = &buffer[1];
+        //buffer = BufferUtils::RemoveFront(Remove_CMD, buffer);
+
+        if (Has_UDP_ID(udp_id)) {
+
+            //Logger::Log(endpoint.address().to_string());
+
+            // Compare address to client.
+
+            SocketUser* socket_user = m_udp_id_map[udp_id].get();
+            //Data data(Protocal_Udp, command, buffer);
+            Process(socket_user, command, buffer, size, Protocal_Udp);
+        }
+        else {
+            Logger::Log("UDP ID Not Found: " + std::to_string(udp_id));
+        }
+    }
+    else {
+        Logger::Log(std::to_string(Protocal_Udp) + ": Received empty buffer!");
+    }
+    assert(size <= MAX_UDP_SIZE);
+}
+
 void AsyncServer::handle_accept(const boost::system::error_code& error) {
     if (!error)
         Logger::Log("Client connected");
@@ -270,7 +309,7 @@ void AsyncServer::handle_accept(const boost::system::error_code& error) {
         Logger::Log("Client connect failed");
 }
 
-void AsyncServer::Process(SocketUser* socket_user, Data data)
+/*void AsyncServer::Process(SocketUser* socket_user, Data data)
 {
     if (HasCommand(data.command)) {
 
@@ -294,6 +333,36 @@ void AsyncServer::Process(SocketUser* socket_user, Data data)
     else {
         Logger::Log("User submitted invalid command");
     }
+}*/
+
+void AsyncServer::Process(SocketUser* socket_user, uint8_t command, uint8_t* data, int size, Protocal type)
+{
+    //if (HasCommand(command)) {
+
+        NetCommand command_obj = m_commands[command];
+
+        socket_user->ResetPingCounter();
+
+        ThreadCommand thread_cmd{};
+        thread_cmd.buffer = new uint8_t[size];
+        memcpy(thread_cmd.buffer, data, size);
+        thread_cmd.buffer_size = size;
+        thread_cmd.type = type;
+        thread_cmd.user = socket_user->SessionToken;
+        thread_cmd.command = command;
+
+        if (command_obj.Is_Async && m_run_async_commands) {
+            //Logger::Log("Received async command: " + std::to_string(data.command));
+            m_async_command_queue.push(thread_cmd);
+        }
+        else {
+            //Logger::Log("Received main command: " + std::to_string(data.command));
+            m_main_command_queue.push(thread_cmd);
+        }
+    //}
+    //else {
+    //    Logger::Log("User submitted invalid command");
+    //}
 }
 
 void AsyncServer::PopulateUserList()
@@ -317,6 +386,11 @@ uint16_t AsyncServer::Get_New_UDP_ID()
 }
 
 void AsyncServer::DoProcess(std::string socket_user, Data data) {
+
+    if (!HasCommand(data.command)) {
+        Logger::LogWarning("Invalid command submitted");
+        return;
+    }
 
     NetCommand command_obj = m_commands[data.command];
 
