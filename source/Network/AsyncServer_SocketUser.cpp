@@ -52,11 +52,16 @@ void SocketUser::HandleStartConnect_Finished(bool successfull)
 	if (successfull) {
 		result = 0x01;
 
+		_server->AddPlayer(shared_from_this());
+
 		uint16_t udp_id = _server->Get_New_UDP_ID();
 		Set_UDP_ID(udp_id);
 		_server->Add_UDP_ID(udp_id, shared_from_this());
+		
+		uint16_t udp_port = EnableUdp();
+
 		uint8_t* udp_buf = (uint8_t*)&udp_id;
-		EnableUdp(UDP_PORT);
+		uint8_t* udp_port_buf = (uint8_t*)&udp_port;
 
 		//user.UdpID = udpid;
 		//AddUdpID(udpid, user.SessionToken);
@@ -67,9 +72,7 @@ void SocketUser::HandleStartConnect_Finished(bool successfull)
 
 		Logger::Log("UDP ID: " + std::to_string(udp_id));
 
-		Send(OpCodes::Client::System_Reserved, BufferUtils::Add({0x01, result}, {udp_buf[0], udp_buf[1]}), Protocal_Tcp);
-
-		_server->AddPlayer(shared_from_this());
+		Send(OpCodes::Client::System_Reserved, BufferUtils::Add({0x01, result}, {udp_buf[0], udp_buf[1], udp_port_buf[0], udp_port_buf[1]}));
 
 		// handle messages
 
@@ -83,11 +86,15 @@ void SocketUser::HandleStartConnect_Finished(bool successfull)
 	}
 }
 
-void SocketUser::EnableUdp(int port)
+uint16_t SocketUser::EnableUdp()
 {
-	UdpEndPoint.port(port);
-	//Logger.Log("UDP end point: {0}:{1}", udpEndPoint.Address.ToString(), udpEndPoint.Port);
+	udp_connection_client = _server->m_udp_server->create(TcpEndPoint.address());
+	UdpEndPoint.port(udp_connection_client->GetPort());
 	UdpEnabled = true;
+	return UdpEndPoint.port();
+
+	//Logger.Log("UDP end point: {0}:{1}", udpEndPoint.Address.ToString(), udpEndPoint.Port);
+	//UdpEnabled = true;
 	//_server->m_udp_server->start_receive(this);
 }
 
@@ -108,9 +115,9 @@ void SocketUser::SetUser(std::shared_ptr<IUser> user)
 
 void SocketUser::Set_Client_UDP_Port(uint16_t port)
 {
-	Logger::Log("Set client UDP port to " + std::to_string((int)port));
-	UdpEndPoint.port(port);
-	_server->m_udp_server->AbortListen();
+	//Logger::Log("Set client UDP port to " + std::to_string((int)port));
+	//UdpEndPoint.port(port);
+	//_server->m_udp_server->AbortListen();
 	//_server->m_udp_server->start_receive(shared_from_this());
 	//UdpEndPoint = udp::endpoint(TcpEndPoint.address(), port);
 }
@@ -174,7 +181,7 @@ void SocketUser::DoSendUdp(std::vector<uint8_t> data)
 
 	data = BufferUtils::Add_UDP_ID(UdpID, data);
 
-	_server->m_udp_server->Send(UdpEndPoint, data);
+	udp_connection_client->Send(UdpEndPoint, data);
 }
 
 std::string SocketUser::GetIP()
@@ -191,7 +198,7 @@ void SocketUser::Close(bool sendClose, std::string reason)
 		UdpEnabled = false;
 
 		// Triggers the closing of all async receives, which restart for active socket users.
-		_server->m_udp_server->AbortListen();
+		//_server->m_udp_server->AbortListen();
 
 		//std::shared_ptr<IUser> tmp_user = User.lock();
 		if (!User.expired())
@@ -200,6 +207,7 @@ void SocketUser::Close(bool sendClose, std::string reason)
 		}
 
 		tcp_connection_client->close();
+		udp_connection_client->Close();
 
 		_server->RemovePlayer(SessionToken);
 

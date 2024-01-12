@@ -14,8 +14,9 @@ AsyncServer::AsyncServer(Server_Main* server)
 	m_server = server;
 	//m_authenticator = PlayerAuthenticator(this);
 
-    m_udp_server = new udp_server(this, m_io_service_udp, UDP_PORT);
+    //m_udp_server = new udp_server(this, m_io_service_udp, UDP_PORT);
 	m_tcp_server = new tcp_server(this, m_io_service_tcp, TCP_PORT);
+    m_udp_server = new udp_main_server(this, m_io_service_udp, UDP_PORT_RANGE_START, UDP_PORT_RANGE_END);
 
     AddCommand(OpCodes::Server::System_Reserved, System_Cmd_cb, this);
 
@@ -51,12 +52,20 @@ void AsyncServer::Update(float dt)
         use_count_str += std::to_string(usr.use_count()) + ", ";
     }
 
+    Server_Main::SetQueueLength_TCP_SendQeue(Get_TCP_Send_Queue_Size_All());
+
     //if (m_Socket_user_list.size() > 0)
     //    Logger::Log("User use counts: " + use_count_str);
-    
-    while (!m_main_command_queue.empty()) {
-        ThreadCommand thr_command = m_main_command_queue.front();
-        m_main_command_queue.pop();
+
+    std::queue<ThreadCommand> current_command_queue;
+    int numEntries = threadSafeCommandQueueDuplicate(m_main_command_queue_lock, m_main_command_queue, current_command_queue);
+
+    m_main_cmd_q_len = numEntries;
+    Server_Main::SetQueueLength_Main_ReceiveQueue(numEntries);
+
+    while (!current_command_queue.empty()) {
+        ThreadCommand thr_command = current_command_queue.front();
+        current_command_queue.pop();
         Data data(thr_command.type, thr_command.command, std::vector<uint8_t>(thr_command.buffer, thr_command.buffer + thr_command.buffer_size));
         delete[] (thr_command.buffer);
         DoProcess(thr_command.user, data);
@@ -68,20 +77,60 @@ void AsyncServer::Process_Async(AsyncServer* svr) {
     svr->m_run = true;
     svr->m_run_async_commands = true;
 
+    uint64_t last_command_processed = 0;
+    int ns_wait = 1000;
+
     while (svr->m_run) {
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::nanoseconds(ns_wait));
 
-        while (!svr->m_async_command_queue.empty()) {
-            ThreadCommand thr_command = svr->m_async_command_queue.front();
-            svr->m_async_command_queue.pop();
+        std::queue<ThreadCommand> current_command_queue;
+        int numEntries = svr->threadSafeCommandQueueDuplicate(svr->m_async_command_queue_lock, svr->m_async_command_queue, current_command_queue);
+
+        svr->m_async_cmd_q_len = numEntries;
+        Server_Main::SetQueueLength_Async_ReceiveQueue(numEntries);
+
+        if (numEntries == 0) {
+            continue;
+        }
+
+        uint64_t now = Server_Main::GetEpoch();
+        uint64_t time_diff_ms = (now - last_command_processed);
+        last_command_processed = now;
+
+        if (time_diff_ms > 10000) { // no command in 10 seconds
+            ns_wait = 1000; // 1 ms
+        }
+        else if (time_diff_ms > 1000) { // no command in 1 second
+            ns_wait = 100;
+        }
+        else {
+            ns_wait = 1;
+        }
+
+        while (!current_command_queue.empty()) {
+            ThreadCommand thr_command = current_command_queue.front();
+            current_command_queue.pop();
             Data data(thr_command.type, thr_command.command, std::vector<uint8_t>(thr_command.buffer, thr_command.buffer + thr_command.buffer_size));
-            delete[] (thr_command.buffer);
+            delete[](thr_command.buffer);
             svr->DoProcess(thr_command.user, data);
         }
 
-        Server_Main::SetMemoryUsageForThread("async_server_process");
+        //Server_Main::SetMemoryUsageForThread("async_server_process");
     }
+}
+
+int AsyncServer::threadSafeCommandQueueDuplicate(std::mutex& lock, std::queue<ThreadCommand>& from, std::queue<ThreadCommand>& to)
+{
+    int res = 0;
+    lock.lock();
+    while (!from.empty()) {
+        to.push(from.front());
+        from.pop();
+        res++;
+    }
+    lock.unlock();
+    return res;
 }
 
 void AsyncServer::AddCommand(OpCodes::Server cmd, CommandActionPtr callback, void* obj, bool async)
@@ -155,85 +204,20 @@ void AsyncServer::PlayerAuthenticated(std::shared_ptr<SocketUser> user, bool aut
 	}
 }
 
-
-
-void AsyncServer::Test_Client()
+int AsyncServer::Get_TCP_Send_Queue_Size_All()
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-    boost::asio::io_service io_service;
-    //socket creation
-    tcp::socket socket(io_service);
-    //connection
-    socket.connect(tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 1000));
-    // request/message from client
-    const std::string msg = "Hello from Client!\n";
-    boost::system::error_code error;
-    boost::asio::write(socket, boost::asio::buffer(msg), error);
-    if (!error) {
-        Logger::Log("client sent hello");
-        //cout << "Client sent hello message!" << endl;
+    int res = 0;
+    for (auto& usr : m_Socket_user_list) {
+        res += usr->tcp_connection_client->GetSendQeueLength();
     }
-    else {
-        Logger::Log("Failed to send hello from client");
-        //cout << "send failed: " << error.message() << endl;
-    }
-    // getting response from server
-    boost::asio::streambuf receive_buffer;
-    boost::asio::read(socket, receive_buffer, boost::asio::transfer_all(), error);
-    if (error && error != boost::asio::error::eof) {
-        Logger::Log("received a fail response");
-        //cout << "receive failed: " << error.message() << endl;
-    }
-    else {
-        const char* data = boost::asio::buffer_cast<const char*>(receive_buffer.data());
-        Logger::Log("received a successful response: " + std::string(data));
-        //cout << data << endl;
-    }
-
+    return res;
 }
 
-std::string read_(tcp::socket& socket) {
-    boost::asio::streambuf buf;
-    boost::asio::read_until(socket, buf, "\n");
-    std::string data = boost::asio::buffer_cast<const char*>(buf.data());
-    return data;
-}
-void send_(tcp::socket& socket, const std::string& message) {
-    const std::string msg = message + "\n";
-    boost::asio::write(socket, boost::asio::buffer(message));
-}
-
-void AsyncServer::Test_Server(void* obj)
+glm::uvec2 AsyncServer::Get_UDP_Sends()
 {
-    AsyncServer* async_s = (AsyncServer*)obj;
+    return glm::uvec2();
 
-    boost::asio::io_service io_service;
-    //listen for new connection
-    tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), 1234));
-    //socket creation 
-    tcp::socket socket_(io_service);
-    //waiting for connection
-    
-    async_s->m_thread_2 = std::thread(Test_Client);
-
-    //acceptor_.accept(socket_);
-    acceptor_.async_accept(socket_,
-        boost::bind(&AsyncServer::handle_accept, async_s,
-            boost::asio::placeholders::error));
-
-    io_service.run();
-    
-
-    //Logger::Log("Client connected");
-    //read operation
-    //std::string message = read_(socket_);
-    //Logger::Log(message);
-    //cout << message << endl;
-    //write operation
-    //send_(socket_, "Hello From Server!");
-    //Logger::Log("Servent sent Hello message to Client!");
-    //cout << "Servent sent Hello message to Client!" << endl;
+    //return glm::uvec2(m_udp_server->GetNumSendRequests(), m_udp_server->GetNumSends());
 }
 
 void AsyncServer::Receive_UDP(std::vector<uint8_t> buffer, boost::asio::ip::address endpoint)
@@ -353,11 +337,16 @@ void AsyncServer::Process(SocketUser* socket_user, uint8_t command, uint8_t* dat
 
         if (command_obj.Is_Async && m_run_async_commands) {
             //Logger::Log("Received async command: " + std::to_string(data.command));
+            m_async_command_queue_lock.lock();
             m_async_command_queue.push(thread_cmd);
+            m_async_command_queue_lock.unlock();
         }
         else {
             //Logger::Log("Received main command: " + std::to_string(data.command));
+            m_main_command_queue_lock.lock();
             m_main_command_queue.push(thread_cmd);
+            m_main_cmd_q_len++;
+            m_main_command_queue_lock.unlock();
         }
     //}
     //else {

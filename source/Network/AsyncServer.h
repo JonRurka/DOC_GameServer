@@ -67,8 +67,9 @@ public:
 
 	void PlayerAuthenticated(std::shared_ptr<SocketUser> user, bool authorized);
 
-	static void Test_Client();
-	static void Test_Server(void* obj);
+	int Get_TCP_Send_Queue_Size_All();
+
+	glm::uvec2 Get_UDP_Sends();
 
 	void Receive_UDP(std::vector<uint8_t> data, boost::asio::ip::address endpoint);
 
@@ -111,8 +112,8 @@ private:
 	boost::asio::io_service m_io_service_udp;
 	boost::asio::io_service m_io_service_tcp;
 	tcp_server* m_tcp_server;
-	udp_server* m_udp_server; // TODO: Might be good to make several.
-	
+	//udp_server* m_udp_server; // TODO: Might be good to make several.
+	udp_main_server* m_udp_server;
 
 	std::thread m_thread_1;
 	std::thread m_thread_2;
@@ -127,7 +128,14 @@ private:
 	std::queue<std::string> m_queue_user_remove;
 
 	std::queue<ThreadCommand> m_main_command_queue;
+	std::mutex m_main_command_queue_lock;
+	int m_main_cmd_q_len = 0;
+
 	std::queue<ThreadCommand> m_async_command_queue;
+	std::mutex m_async_command_queue_lock;
+	int m_async_cmd_q_len = 0;
+
+	int threadSafeCommandQueueDuplicate(std::mutex& lock, std::queue<ThreadCommand>& from, std::queue<ThreadCommand>& to);
 
 	void PopulateUserList();
 

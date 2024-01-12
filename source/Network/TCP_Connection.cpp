@@ -22,6 +22,7 @@ void tcp_connection::Send(std::vector<uint8_t> sending)
 
 	m_send_lock.lock();
 	m_send_messages.push(msg);
+	m_send_queue_len++;
 	m_send_lock.unlock();
 
 	m_sends_semaphore_2.release();
@@ -70,6 +71,8 @@ void tcp_connection::start_send() {
 	if (!m_send_messages.empty()) {
 		msg = m_send_messages.front();
 		m_send_messages.pop();
+
+		m_send_queue_len--;
 	}
 	else {
 		m_send_lock.unlock();

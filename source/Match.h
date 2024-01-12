@@ -4,7 +4,7 @@
 #include "Network/Data.h"
 #include "Network/OpCodes.h"
 
-#define ORIENTATION_SEND_RATE ((1 / 20.0) * 1000) // MS
+#define ORIENTATION_SEND_RATE ((1 / 60.0) * 1000) // MS
 
 class SocketUser;
 class Player;

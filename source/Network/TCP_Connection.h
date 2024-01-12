@@ -57,11 +57,16 @@ public:
 
 	void close();
 
+	int GetSendQeueLength() {
+		return m_send_queue_len;
+	}
+
 private:
 	tcp_connection(boost::asio::io_service& io_service)
 		: socket_(io_service)
 	{
 		sent = 0;
+		m_send_queue_len = 0;
 		m_running = true;
 		m_thread_sends = std::thread(RunSend, this);
 		//start_send();
@@ -93,7 +98,8 @@ private:
 	bool m_running;
 	std::thread m_thread_sends;
 
-	
+	int m_send_queue_len;
+
 	std::binary_semaphore m_sends_semaphore_1{ 0 };
 	std::binary_semaphore m_sends_semaphore_2{ 0 };
 	std::mutex m_send_lock;

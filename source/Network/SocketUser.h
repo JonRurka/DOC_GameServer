@@ -2,6 +2,7 @@
 
 #include "../stdafx.h"
 #include "TCP_Connection.h"
+#include "udp_connection.h"
 
 class AsyncServer;
 
@@ -20,6 +21,7 @@ public:
 	uint16_t UdpID;
 	bool CloseMessage;
 	tcp_connection::pointer tcp_connection_client;
+	udp_connection::pointer udp_connection_client;
 
 	tcp::endpoint TcpEndPoint;
 	udp::endpoint UdpEndPoint;
@@ -49,7 +51,7 @@ public:
 
 	void HandleStartConnect_Finished(bool successfull);
 
-	void EnableUdp(int port);
+	uint16_t EnableUdp();
 
 	void SetUser(std::shared_ptr<IUser> user);
 

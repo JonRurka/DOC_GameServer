@@ -16,6 +16,7 @@
 using namespace boost;
  
 Server_Main* Server_Main::m_instance = nullptr;
+Server_Main::QueueLengths Server_Main::m_queue_lengths{};
 
 void Server_Main::UserConnected(std::shared_ptr<SocketUser> socket_user)
 {
@@ -71,6 +72,18 @@ void Server_Main::PlayerAuthenticated(std::shared_ptr<Player> player, bool autho
 		player->Socket_User()->Close(true);
 		//delete player;
 	}
+}
+
+void Server_Main::PrintQueueLengths()
+{
+	std::string queue_lenths_str = "Network Queue Lengths: \n";
+
+	queue_lenths_str += "\tUDP_SendQeue: " + std::to_string(m_queue_lengths.UDP_SendQeue) + "\n";
+	queue_lenths_str += "\tTCP_SendQeue: " + std::to_string(m_queue_lengths.TCP_SendQeue) + "\n";
+	queue_lenths_str += "\tMain_ReceiveQueue: " + std::to_string(m_queue_lengths.Main_ReceiveQueue) + "\n";
+	queue_lenths_str += "\tAsync_ReceiveQueue: " + std::to_string(m_queue_lengths.Async_ReceiveQueue) + "\n";
+
+	Logger::Log(queue_lenths_str);
 }
 
 std::shared_ptr<Player> Server_Main::CreateFakePlayer(uint32_t id)
@@ -192,7 +205,10 @@ void Server_Main::Update(double dt)
 		m_memory_lock.unlock();*/
 
 
+		PrintQueueLengths();
 
+		glm::uvec2 udp_sends = m_net_server->Get_UDP_Sends();
+		Logger::Log("UDP packets sent: " + std::to_string(udp_sends.y) + " out of " + std::to_string(udp_sends.x));
 
 		m_last_memory_print_time = now;
 	}

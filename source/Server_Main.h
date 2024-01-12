@@ -16,6 +16,15 @@ class Player;
 
 class Server_Main {
 private:
+
+	struct QueueLengths {
+		int UDP_SendQeue;
+		int TCP_SendQeue;
+		int Main_ReceiveQueue;
+		int Async_ReceiveQueue;
+
+	};
+
 	static Server_Main* m_instance;
 
 	std::string m_cmdArgs;
@@ -41,6 +50,8 @@ private:
 	std::map<std::string, uint64_t> m_memory_usage;
 	std::mutex m_memory_lock;
 	uint64_t m_last_memory_print_time;
+
+	static QueueLengths m_queue_lengths;
 
 public:
 
@@ -79,6 +90,22 @@ public:
 		return m_instance->timer.elapsed();
 	}
 
+	static void SetQueueLength_UDP_SendQeue(int num) {
+		m_queue_lengths.UDP_SendQeue = num;
+	}
+
+	static void SetQueueLength_TCP_SendQeue(int num) {
+		m_queue_lengths.TCP_SendQeue = num;
+	}
+
+	static void SetQueueLength_Main_ReceiveQueue(int num) {
+		m_queue_lengths.Main_ReceiveQueue = num;
+	}
+
+	static void SetQueueLength_Async_ReceiveQueue(int num) {
+		m_queue_lengths.Async_ReceiveQueue = num;
+	}
+
 	static uint64_t GetEpoch() {
 		auto now = std::chrono::system_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
@@ -113,6 +140,8 @@ public:
 	bool Has_Player(uint32_t p_id) {
 		return m_players.find(p_id) != m_players.end();
 	}
+
+	void PrintQueueLengths();
 
 	std::shared_ptr<Player> CreateFakePlayer(uint32_t id);
 

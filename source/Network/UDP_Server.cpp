@@ -3,7 +3,11 @@
 #include "AsyncServer.h"
 #include "SocketUser.h"
 #include "../Server_Main.h"
+#include "../HashHelper.h"
 
+udp_main_server* udp_main_server::m_instance = nullptr;
+
+/*
 void udp_server::start_receive(SocketUser* socket_user)
 {
 	int port = m_port;
@@ -38,7 +42,13 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 
 	if (error)
 	{
-		/*if (error.value() == boost::asio::error::operation_aborted) {
+		if (error.value() == 10061) { // refused by client
+			start_receive(socket_user);
+			// Possibly remove client?
+			return;
+		}
+
+		if (error.value() == boost::asio::error::operation_aborted) {
 			Logger::Log("UDP receive operation aborted");
 			if (socket_user->UdpEnabled) {
 				Logger::Log("Reboot receive.");
@@ -49,7 +59,7 @@ void udp_server::handle_receive(const boost::system::error_code& error, size_t t
 				Logger::Log("Not restarting listen for disconnected client.");
 				return;
 			}
-		}*/
+		}
 
 		Logger::Log("UDP Receive Error (" + std::to_string(error.value()) + "): " + error.what());
 		start_receive(socket_user);
@@ -102,6 +112,9 @@ void udp_server::Send(udp::endpoint remote_endpoint, std::vector<uint8_t> sendin
 
 	m_send_lock.lock();
 	m_send_messages.push(msg);
+	m_send_queue_len++;
+	m_numTrySends++;
+	Server_Main::SetQueueLength_UDP_SendQeue(m_send_queue_len);
 	m_send_lock.unlock();
 
 	//Logger::Log("Push UDP message");
@@ -122,6 +135,9 @@ void udp_server::start_send()
 	if (!m_send_messages.empty()) {
 		msg = m_send_messages.front();
 		m_send_messages.pop();
+
+		m_send_queue_len--;
+		Server_Main::SetQueueLength_UDP_SendQeue(m_send_queue_len);
 	}
 	else {
 		m_send_lock.unlock();
@@ -136,6 +152,7 @@ void udp_server::start_send()
 	recv_socket_.async_send_to(boost::asio::buffer(m_send_buff, msg.sending.size()), remote_endpoint,
 		boost::bind(&udp_server::handle_send, this));
 
+	m_numDoSends++;
 	//Logger::Log("Send UDP message 2 (" + std::to_string(msg.sending.size()) + "): " + remote_endpoint.address().to_string() + ": " + std::to_string(remote_endpoint.port()));
 	
 }
@@ -166,4 +183,40 @@ void udp_server::RunService(udp_server* svr)
 	Logger::Log("UDP io_service stopped running.");
 	
 }
+*/
+// ############ NEW CODE ########################
 
+void udp_main_server::close()
+{
+	Logger::Log("close UDP service.");
+	m_run = false;
+	io_service_.stop();
+	m_thread.join();
+}
+
+udp_connection::pointer udp_main_server::create(address addr)
+{
+	int con_port = Get_New_Port();
+
+	return udp_connection::pointer(new udp_connection(this, io_service_, addr, con_port));
+}
+
+void udp_main_server::RunService(udp_main_server* svr)
+{
+	Logger::Log("Running UPD io_service");
+	while (svr->m_run) {
+		svr->io_service_.run();
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	Logger::Log("UDP io_service stopped running.");
+
+}
+
+uint16_t udp_main_server::Get_New_Port()
+{
+	uint16_t newNum = HashHelper::RandomNumber(m_port_range_start, m_port_range_end);
+	if (has_port(newNum)) {
+		newNum = Get_New_Port();
+	}
+	return newNum;
+}
