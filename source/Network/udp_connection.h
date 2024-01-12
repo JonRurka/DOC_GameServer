@@ -32,6 +32,7 @@ class udp_connection {
 	udp::socket m_socket_;
 	address m_address;
 	std::thread m_thread_sends;
+	std::thread m_thread_service;
 	uint8_t m_recv_buff[MAX_UDP_SIZE];
 	uint8_t m_send_buff[MAX_UDP_SIZE];
 	std::mutex m_send_lock;
@@ -53,6 +54,7 @@ class udp_connection {
 
 	std::binary_semaphore m_sends_semaphore_1{ 0 };
 	std::binary_semaphore m_sends_semaphore_2{ 0 };
+
 
 
 public:
@@ -97,6 +99,7 @@ private:
 		start_receive();
 
 		m_thread_sends = std::thread(RunSend, this);
+		m_thread_service = std::thread(RunService, this);
 	}
 
 	static void RunSend(udp_connection* srv) {
@@ -115,5 +118,7 @@ private:
 	void start_receive();
 
 	void handle_receive(const boost::system::error_code& error, size_t transfered);
+
+	static void RunService(udp_connection* svr);
 
 };

@@ -34,7 +34,6 @@ void udp_connection::Send(udp::endpoint remote_endpoint, std::vector<uint8_t> se
 	m_send_messages.push(msg);
 	m_send_queue_len++;
 	m_numTrySends++;
-	Server_Main::SetQueueLength_UDP_SendQeue(m_send_queue_len);
 	m_send_lock.unlock();
 
 	//Logger::Log("Push UDP message");
@@ -56,7 +55,6 @@ void udp_connection::start_send()
 		m_send_messages.pop();
 
 		m_send_queue_len--;
-		Server_Main::SetQueueLength_UDP_SendQeue(m_send_queue_len);
 	}
 	else {
 		m_send_lock.unlock();
@@ -120,4 +118,15 @@ void udp_connection::handle_receive(const boost::system::error_code& error, size
 
 	start_receive();
 
+}
+
+void udp_connection::RunService(udp_connection* svr)
+{
+	Logger::Log("Running UPD io_service");
+	while (svr->m_running && svr->m_udp_server->m_run) {
+		//svr->m_own_io_service.run();
+		svr->m_udp_server->io_service_.run();
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	Logger::Log("UDP io_service stopped running.");
 }

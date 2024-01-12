@@ -53,6 +53,7 @@ void AsyncServer::Update(float dt)
     }
 
     Server_Main::SetQueueLength_TCP_SendQeue(Get_TCP_Send_Queue_Size_All());
+    Server_Main::SetQueueLength_UDP_SendQeue(Get_UDP_Send_Queue_Size_All());
 
     //if (m_Socket_user_list.size() > 0)
     //    Logger::Log("User use counts: " + use_count_str);
@@ -206,11 +207,26 @@ void AsyncServer::PlayerAuthenticated(std::shared_ptr<SocketUser> user, bool aut
 
 int AsyncServer::Get_TCP_Send_Queue_Size_All()
 {
+    if (m_Socket_user_list.size() == 0)
+        return 0;
+
     int res = 0;
     for (auto& usr : m_Socket_user_list) {
         res += usr->tcp_connection_client->GetSendQeueLength();
     }
-    return res;
+    return res / m_Socket_user_list.size();
+}
+
+int AsyncServer::Get_UDP_Send_Queue_Size_All()
+{
+    if (m_Socket_user_list.size() == 0)
+        return 0;
+
+    int res = 0;
+    for (auto& usr : m_Socket_user_list) {
+        res += usr->udp_connection_client->GetSendQeueLength();
+    }
+    return res / m_Socket_user_list.size();
 }
 
 glm::uvec2 AsyncServer::Get_UDP_Sends()

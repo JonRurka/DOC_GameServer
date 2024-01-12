@@ -256,7 +256,6 @@ void Match::SendOrientationUpdates()
 
 		BroadcastCommand(OpCodes::Client::Update_Orientations, send_buff, Protocal_Udp); //Protocal_Udp
 
-
 		m_last_orientation_update = Server_Main::GetEpoch();
 	}
 
@@ -292,13 +291,29 @@ void Match::SendPlayerEvents()
 
 void Match::ProcessNetCommands()
 {
-	while (!m_command_queue.empty()) {
-		NetCommand data = m_command_queue.front();
-		m_command_queue.pop();
+	std::queue<NetCommand> current_commands;
+	threadSafeCommandQueueDuplicate(m_command_queue_lock, m_command_queue, current_commands);
+
+	while (!current_commands.empty()) {
+		NetCommand data = current_commands.front();
+		current_commands.pop();
 
 		ExecuteNetCommand(data.user, data.data);
 		
 	}
+}
+
+int Match::threadSafeCommandQueueDuplicate(std::mutex& lock, std::queue<NetCommand>& from, std::queue<NetCommand>& to)
+{
+	int res = 0;
+	lock.lock();
+	while (!from.empty()) {
+		to.push(from.front());
+		from.pop();
+		res++;
+	}
+	lock.unlock();
+	return res;
 }
 
 void Match::ExecuteNetCommand(uint32_t user_id, Data data)
@@ -379,8 +394,11 @@ void Match::UpdateOrientation_NetCmd(Player& player, Data data)
 
 void Match::SubmitMatchCommand(Player* user, Data data)
 {
-	NetCommand command;
+	NetCommand command{};
 	command.user = user->Get_UserID();
 	command.data = data;
+
+	m_command_queue_lock.lock();
 	m_command_queue.push(command);
+	m_command_queue_lock.unlock();
 }

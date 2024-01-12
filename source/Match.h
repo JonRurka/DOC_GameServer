@@ -4,7 +4,7 @@
 #include "Network/Data.h"
 #include "Network/OpCodes.h"
 
-#define ORIENTATION_SEND_RATE ((1 / 60.0) * 1000) // MS
+#define ORIENTATION_SEND_RATE ((1 / 20.0) * 1000) // MS
 
 class SocketUser;
 class Player;
@@ -67,6 +67,7 @@ private:
 	std::mutex m_player_mtx;
 
 	std::queue<NetCommand> m_command_queue;
+	std::mutex m_command_queue_lock;
 
 	MatchState m_match_state;
 
@@ -81,6 +82,8 @@ private:
 	void SubmitPlayerEvent(Player& user, OpCodes::Player_Events, std::vector<uint8_t> data);
 
 	void GetMatchInfo();
+
+	int threadSafeCommandQueueDuplicate(std::mutex& lock, std::queue<NetCommand>& from, std::queue<NetCommand>& to);
 
 	static void Run(Match* mtch);
 

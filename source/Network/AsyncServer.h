@@ -69,6 +69,8 @@ public:
 
 	int Get_TCP_Send_Queue_Size_All();
 
+	int Get_UDP_Send_Queue_Size_All();
+
 	glm::uvec2 Get_UDP_Sends();
 
 	void Receive_UDP(std::vector<uint8_t> data, boost::asio::ip::address endpoint);
